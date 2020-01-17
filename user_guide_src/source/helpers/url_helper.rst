@@ -23,16 +23,16 @@ The following functions are available:
 
 .. php:function:: site_url([$uri = ''[, $protocol = NULL[, $altConfig = NULL]]])
 
-	:param	string	$uri: URI string
+	:param	mixed	$uri: URI string or array of URI segments
 	:param	string	$protocol: Protocol, e.g. 'http' or 'https'
 	:param	\\Config\\App	$altConfig: Alternate configuration to use
 	:returns:	Site URL
 	:rtype:	string
 
 	Returns your site URL, as specified in your config file. The index.php
-	file (or whatever you have set as your site **index_page** in your config
+	file (or whatever you have set as your site **indexPage** in your config
 	file) will be added to the URL, as will any URI segments you pass to the
-	function, plus the **url_suffix** as set in your config file.
+	function.
 
 	You are encouraged to use this function any time you need to generate a
 	local URL so that your pages become more portable in the event your URL
@@ -48,7 +48,7 @@ The following functions are available:
 
 	Here is an example of segments passed as an array::
 
-		$segments = array('news', 'local', '123');
+		$segments = ['news', 'local', '123'];
 		echo site_url($segments);
 
         You may find the alternate configuration useful if generating URLs for a
@@ -57,7 +57,7 @@ The following functions are available:
 
 .. php:function:: base_url([$uri = ''[, $protocol = NULL]])
 
-	:param	string	$uri: URI string
+	:param	mixed	$uri: URI string or array of URI segments
 	:param	string	$protocol: Protocol, e.g. 'http' or 'https'
 	:returns:	Base URL
 	:rtype:	string
@@ -67,7 +67,7 @@ The following functions are available:
 		echo base_url();
 
 	This function returns the same thing as :php:func:`site_url()`, without
-	the *index_page* or *url_suffix* being appended.
+	the *indexPage* being appended.
 
 	Also like :php:func:`site_url()`, you can supply segments as a string or
 	an array. Here is a string example::
@@ -95,7 +95,6 @@ The following functions are available:
 	viewed.
 
 	.. note:: Calling this function is the same as doing this::
-
 		base_url(uri_string());
 
 .. php:function:: previous_url([$returnObject = false])
@@ -111,7 +110,6 @@ The following functions are available:
 	use a known and trusted source. If the session hasn't been loaded, or is otherwise unavailable,
 	then a sanitized version of HTTP_REFERER will be used.
 
-
 .. php:function:: uri_string()
 
 	:returns:	An URI string
@@ -126,14 +124,13 @@ The following functions are available:
 
 		blog/comments/123
 
-
 .. php:function:: index_page([$altConfig = NULL])
 
 	:param	\Config\App	$altConfig: Alternate configuration to use
 	:returns:	'index_page' value
 	:rtype:	mixed
 
-	Returns your site **index_page**, as specified in your config file.
+	Returns your site **indexPage**, as specified in your config file.
 	Example::
 
 		echo index_page();
@@ -175,7 +172,7 @@ The following functions are available:
 		echo anchor('news/local/123', 'My News', 'title="News title"');
 		// Prints: <a href="http://example.com/index.php/news/local/123" title="News title">My News</a>
 
-		echo anchor('news/local/123', 'My News', array('title' => 'The best news!'));
+		echo anchor('news/local/123', 'My News', ['title' => 'The best news!']);
 		// Prints: <a href="http://example.com/index.php/news/local/123" title="The best news!">My News</a>
 
 		echo anchor('', 'Click here');
@@ -205,7 +202,7 @@ The following functions are available:
 
 	Here is an example with attributes::
 
-		$atts = array(
+		$atts = [
 			'width'       => 800,
 			'height'      => 600,
 			'scrollbars'  => 'yes',
@@ -214,7 +211,7 @@ The following functions are available:
 			'screenx'     => 0,
 			'screeny'     => 0,
 			'window_name' => '_blank'
-		);
+		];
 
 		echo anchor_popup('news/local/123', 'Click Me!', $atts);
 
@@ -223,7 +220,7 @@ The following functions are available:
 		function to use all of its defaults simply pass an empty array in the
 		third parameter::
 
-                    echo anchor_popup('news/local/123', 'Click Me!', array());
+                    echo anchor_popup('news/local/123', 'Click Me!', []);
 
 	.. note:: The **window_name** is not really an attribute, but an argument to
 		the JavaScript `window.open() <http://www.w3schools.com/jsref/met_win_open.asp>`_
@@ -254,7 +251,7 @@ The following functions are available:
 	As with the :php:func:`anchor()` tab above, you can set attributes using the
 	third parameter::
 
-		$attributes = array('title' => 'Mail me');
+		$attributes = ['title' => 'Mail me'];
 		echo mailto('me@my-site.com', 'Contact Me', $attributes);
 
 	.. note:: Attributes passed into the mailto function are automatically escaped to protected against XSS attacks.
@@ -285,7 +282,7 @@ The following functions are available:
 		$string = auto_link($string);
 
 	The second parameter determines whether URLs and e-mails are converted or
-	just one or the other. Default behavior is both if the parameter is not
+	just one or the other. The default behavior is both if the parameter is not
 	specified. E-mail links are encoded as :php:func:`safe_mailto()` as shown
 	above.
 
@@ -316,7 +313,7 @@ The following functions are available:
 	useful if, for example, you have a blog in which you'd like to use the
 	title of your entries in the URL. Example::
 
-		$title = "What's wrong with CSS?";
+		$title     = "What's wrong with CSS?";
 		$url_title = url_title($title);
 		// Produces: Whats-wrong-with-CSS
 
@@ -325,7 +322,7 @@ The following functions are available:
 
 	Example::
 
-		$title = "What's wrong with CSS?";
+		$title     = "What's wrong with CSS?";
 		$url_title = url_title($title, 'underscore');
 		// Produces: Whats_wrong_with_CSS
 
@@ -334,10 +331,9 @@ The following functions are available:
 
 	Example::
 
-		$title = "What's wrong with CSS?";
+		$title     = "What's wrong with CSS?";
 		$url_title = url_title($title, 'underscore', TRUE);
 		// Produces: whats_wrong_with_css
-
 
 .. php:function:: prep_url($str = '')
 

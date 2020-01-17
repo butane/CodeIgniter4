@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Cache;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +28,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Cache;
+
+/**
+ * Cache interface
+ */
+
 interface CacheInterface
 {
 
@@ -48,7 +56,7 @@ interface CacheInterface
 	/**
 	 * Attempts to fetch an item from the cache store.
 	 *
-	 * @param string $key  Cache item name
+	 * @param string $key Cache item name
 	 *
 	 * @return mixed
 	 */
@@ -59,9 +67,9 @@ interface CacheInterface
 	/**
 	 * Saves an item to the cache store.
 	 *
-	 * @param string $key   Cache item name
-	 * @param mixed  $value The data to save
-	 * @param int    $ttl   Time To Live, in seconds (default 60)
+	 * @param string  $key   Cache item name
+	 * @param mixed   $value The data to save
+	 * @param integer $ttl   Time To Live, in seconds (default 60)
 	 *
 	 * @return mixed
 	 */
@@ -72,7 +80,7 @@ interface CacheInterface
 	/**
 	 * Deletes a specific item from the cache store.
 	 *
-	 * @param string $key  Cache item name
+	 * @param string $key Cache item name
 	 *
 	 * @return mixed
 	 */
@@ -83,8 +91,8 @@ interface CacheInterface
 	/**
 	 * Performs atomic incrementation of a raw stored value.
 	 *
-	 * @param string $key    Cache ID
-	 * @param int    $offset Step/value to increase by
+	 * @param string  $key    Cache ID
+	 * @param integer $offset Step/value to increase by
 	 *
 	 * @return mixed
 	 */
@@ -95,8 +103,8 @@ interface CacheInterface
 	/**
 	 * Performs atomic decrementation of a raw stored value.
 	 *
-	 * @param string $key    Cache ID
-	 * @param int    $offset Step/value to increase by
+	 * @param string  $key    Cache ID
+	 * @param integer $offset Step/value to increase by
 	 *
 	 * @return mixed
 	 */
@@ -128,7 +136,7 @@ interface CacheInterface
 	/**
 	 * Returns detailed information about the specific item in the cache.
 	 *
-	 * @param string $key  Cache item name.
+	 * @param string $key Cache item name.
 	 *
 	 * @return mixed
 	 */

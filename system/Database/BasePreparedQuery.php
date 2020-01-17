@@ -1,5 +1,4 @@
-<?php namespace CodeIgniter\Database;
-
+<?php
 /**
  * CodeIgniter
  *
@@ -7,7 +6,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +27,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Database;
+
+use CodeIgniter\Database\MySQLi\Connection;
 use CodeIgniter\Events\Events;
 
+/**
+ * Base prepared query
+ */
 abstract class BasePreparedQuery implements PreparedQueryInterface
 {
 
@@ -50,7 +57,7 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 	/**
 	 * The error code, if any.
 	 *
-	 * @var int
+	 * @var integer
 	 */
 	protected $errorCode;
 
@@ -78,9 +85,14 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 
 	//--------------------------------------------------------------------
 
+	/**
+	 * Constructor.
+	 *
+	 * @param \CodeIgniter\Database\ConnectionInterface $db
+	 */
 	public function __construct(ConnectionInterface $db)
 	{
-		$this->db = & $db;
+		$this->db = &$db;
 	}
 
 	//--------------------------------------------------------------------
@@ -93,12 +105,12 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 	 * override this method.
 	 *
 	 * @param string $sql
-	 * @param array  $options Passed to the connection's prepare statement.
+	 * @param array  $options    Passed to the connection's prepare statement.
 	 * @param string $queryClass
 	 *
 	 * @return mixed
 	 */
-	public function prepare(string $sql, array $options = [], $queryClass = 'CodeIgniter\\Database\\Query')
+	public function prepare(string $sql, array $options = [], string $queryClass = 'CodeIgniter\\Database\\Query')
 	{
 		// We only supports positional placeholders (?)
 		// in order to work with the execute method below, so we
@@ -112,7 +124,7 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 
 		$query->setQuery($sql);
 
-		if ( ! empty($this->db->swapPre) && ! empty($this->db->DBPrefix))
+		if (! empty($this->db->swapPre) && ! empty($this->db->DBPrefix))
 		{
 			$query->swapPrefix($this->db->DBPrefix, $this->db->swapPre);
 		}
@@ -128,7 +140,7 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 	 * The database-dependent portion of the prepare statement.
 	 *
 	 * @param string $sql
-	 * @param array  $options  Passed to the connection's prepare statement.
+	 * @param array  $options Passed to the connection's prepare statement.
 	 *
 	 * @return mixed
 	 */
@@ -175,9 +187,9 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 	 *
 	 * @param array $data
 	 *
-	 * @return ResultInterface
+	 * @return boolean
 	 */
-	abstract public function _execute($data);
+	abstract public function _execute(array $data): bool;
 
 	//--------------------------------------------------------------------
 
@@ -191,11 +203,13 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 	//--------------------------------------------------------------------
 
 	/**
-	 * Explicity closes the statement.
+	 * Explicitly closes the statement.
+	 *
+	 * @return null|void
 	 */
 	public function close()
 	{
-		if ( ! is_object($this->statement))
+		if (! is_object($this->statement))
 		{
 			return;
 		}
@@ -212,7 +226,7 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 	 */
 	public function getQueryString(): string
 	{
-		if ( ! $this->query instanceof QueryInterface)
+		if (! $this->query instanceof QueryInterface)
 		{
 			throw new \BadMethodCallException('Cannot call getQueryString on a prepared query until after the query has been prepared.');
 		}
@@ -225,9 +239,9 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 	/**
 	 * A helper to determine if any error exists.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
-	public function hasError()
+	public function hasError(): bool
 	{
 		return ! empty($this->errorString);
 	}
@@ -237,7 +251,7 @@ abstract class BasePreparedQuery implements PreparedQueryInterface
 	/**
 	 * Returns the error code created while executing this statement.
 	 *
-	 * @return int
+	 * @return integer
 	 */
 	public function getErrorCode(): int
 	{

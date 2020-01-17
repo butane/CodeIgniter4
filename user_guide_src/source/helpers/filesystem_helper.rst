@@ -26,11 +26,10 @@ Available Functions
 
 The following functions are available:
 
-
 .. php:function:: directory_map($source_dir[, $directory_depth = 0[, $hidden = FALSE]])
 
-	:param	string	$source_dir: Path to the source directory
-	:param	int	$directory_depth: Depth of directories to traverse (0 = fully recursive, 1 = current dir, etc)
+	:param	string  $source_dir: Path to the source directory
+	:param	int	    $directory_depth: Depth of directories to traverse (0 = fully recursive, 1 = current dir, etc)
 	:param	bool	$hidden: Whether to include hidden directories
 	:returns:	An array of files
 	:rtype:	array
@@ -40,7 +39,6 @@ The following functions are available:
 		$map = directory_map('./mydirectory/');
 
 	.. note:: Paths are almost always relative to your main index.php file.
-
 
 	Sub-folders contained within the directory will be mapped as well. If
 	you wish to control the recursion depth, you can do so using the second
@@ -114,7 +112,7 @@ The following functions are available:
 	The default mode is 'wb'. Please see the `PHP user guide <http://php.net/manual/en/function.fopen.php>`_
 	for mode options.
 
-	.. note: In order for this function to write data to a file, its permissions must
+	.. note:: In order for this function to write data to a file, its permissions must
 		be set such that it is writable. If the file does not already exist,
 		then the directory containing it must be writable.
 
@@ -178,10 +176,10 @@ The following functions are available:
 
 		$models_info = get_dir_file_info(APPPATH.'models/');
 
-.. php:function:: get_file_info($file[, $returned_values = array('name', 'server_path', 'size', 'date')])
+.. php:function:: get_file_info($file[, $returned_values = ['name', 'server_path', 'size', 'date']])
 
-	:param	string	$file: File path
-	:param	array	$returned_values: What type of info to return
+	:param	string	        $file: File path
+	:param	array|string    $returned_values: What type of info to return to be passed as array or comma separated string
 	:returns:	An array containing info on the specified file or FALSE on failure
 	:rtype:	array
 
@@ -218,10 +216,10 @@ The following functions are available:
 
 		echo octal_permissions(fileperms('./index.php')); // 644
 
-.. php:function:: set_realpath($path[, $check_existance = FALSE])
+.. php:function:: set_realpath($path[, $check_existence = FALSE])
 
 	:param	string	$path: Path
-	:param	bool	$check_existance: Whether to check if the path actually exists
+	:param	bool	$check_existence: Whether to check if the path actually exists
 	:returns:	An absolute path
 	:rtype:	string
 
@@ -244,3 +242,4 @@ The following functions are available:
 		$non_existent_directory = '/path/to/nowhere';
 		echo set_realpath($non_existent_directory, TRUE);	// Shows an error, as the path cannot be resolved
 		echo set_realpath($non_existent_directory, FALSE);	// Prints '/path/to/nowhere'
+

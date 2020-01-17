@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Database\MySQLi;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,17 +28,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
-use CodeIgniter\Database\PreparedQueryInterface;
-use \CodeIgniter\Database\BasePreparedQuery;
 
+namespace CodeIgniter\Database\MySQLi;
+
+use CodeIgniter\Database\PreparedQueryInterface;
+use CodeIgniter\Database\BasePreparedQuery;
+
+/**
+ * Prepared query for MySQLi
+ */
 class PreparedQuery extends BasePreparedQuery implements PreparedQueryInterface
 {
 
@@ -49,8 +56,8 @@ class PreparedQuery extends BasePreparedQuery implements PreparedQueryInterface
 	 * override this method.
 	 *
 	 * @param string $sql
-	 * @param array  $options  Passed to the connection's prepare statement.
-	 *                         Unused in the MySQLi driver.
+	 * @param array  $options Passed to the connection's prepare statement.
+	 *                        Unused in the MySQLi driver.
 	 *
 	 * @return mixed
 	 */
@@ -60,9 +67,9 @@ class PreparedQuery extends BasePreparedQuery implements PreparedQueryInterface
 		// with terminating semicolons.
 		$sql = rtrim($sql, ';');
 
-		if ( ! $this->statement = $this->db->mysqli->prepare($sql))
+		if (! $this->statement = $this->db->mysqli->prepare($sql))
 		{
-			$this->errorCode = $this->db->mysqli->errno;
+			$this->errorCode   = $this->db->mysqli->errno;
 			$this->errorString = $this->db->mysqli->error;
 		}
 
@@ -77,9 +84,9 @@ class PreparedQuery extends BasePreparedQuery implements PreparedQueryInterface
 	 *
 	 * @param array $data
 	 *
-	 * @return \CodeIgniter\Database\ResultInterface
+	 * @return boolean
 	 */
-	public function _execute($data)
+	public function _execute(array $data): bool
 	{
 		if (is_null($this->statement))
 		{

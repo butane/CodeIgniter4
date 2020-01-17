@@ -6,13 +6,16 @@ CodeIgniter provides a File class that wraps the `SplFileInfo <http://php.net/ma
 and provides some additional convenience methods. This class is the base class for :doc:`uploaded files </libraries/uploaded_files>`
 and :doc:`images </libraries/images>`.
 
-.. contents:: Page Contents
+.. contents::
     :local:
+    :depth: 2
 
 Getting a File instance
 =======================
 
-You create a new File instance by passing in the path to the file in the constructor. By default the file does not need to exist. However, you can pass an additional argument of "true" to check that the file exist and throw ``FileNotFoundException()`` when it does not.
+You create a new File instance by passing in the path to the file in the constructor.
+By default, the file does not need to exist. However, you can pass an additional argument of "true"
+to check that the file exists and throw ``FileNotFoundException()`` if it does not.
 
 ::
 
@@ -27,8 +30,8 @@ Once you have an instance, you have the full power of the SplFileInfo class at t
     echo $file->getBasename();
     // Get last modified time
     echo $file->getMTime();
-    // Get the true realpath
-    echo $file->getRealpath();
+    // Get the true real path
+    echo $file->getRealPath();
     // Get the file permissions
     echo $file->getPerms();
 
@@ -78,7 +81,7 @@ the type of file::
 
 Attempts to determine the file extension based on the trusted ``getMimeType()`` method. If the mime type is unknown,
 will return null. This is often a more trusted source than simply using the extension provided by the filename. Uses
-the values in **application/Config/Mimes.php** to determine extension::
+the values in **app/Config/Mimes.php** to determine extension::
 
 	// Returns 'jpg' (WITHOUT the period)
 	$ext = $file->guessExtension();
@@ -95,3 +98,8 @@ By default, the original filename was used. You can specify a new filename by pa
 
 	$newName = $file->getRandomName();
 	$file->move(WRITEPATH.'uploads', $newName);
+
+The move() method returns a new File instance that for the relocated file, so you must capture the result if the
+resulting location is needed::
+
+    $file = $file->move(WRITEPATH.'uploads');

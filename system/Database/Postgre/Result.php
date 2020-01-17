@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Database\Postgre;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +28,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Database\Postgre;
+
 use CodeIgniter\Database\BaseResult;
 use CodeIgniter\Database\ResultInterface;
+use CodeIgniter\Entity;
 
 /**
  * Result for Postgre
@@ -47,7 +52,7 @@ class Result extends BaseResult implements ResultInterface
 	/**
 	 * Gets the number of fields in the result set.
 	 *
-	 * @return int
+	 * @return integer
 	 */
 	public function getFieldCount(): int
 	{
@@ -64,7 +69,7 @@ class Result extends BaseResult implements ResultInterface
 	public function getFieldNames(): array
 	{
 		$fieldNames = [];
-		for ($i = 0, $c = $this->getFieldCount(); $i < $c; $i ++ )
+		for ($i = 0, $c = $this->getFieldCount(); $i < $c; $i ++)
 		{
 			$fieldNames[] = pg_field_name($this->resultID, $i);
 		}
@@ -81,19 +86,19 @@ class Result extends BaseResult implements ResultInterface
 	 */
 	public function getFieldData(): array
 	{
-		$retval = [];
+		$retVal = [];
 
-		for ($i = 0, $c = $this->getFieldCount(); $i < $c; $i ++ )
+		for ($i = 0, $c = $this->getFieldCount(); $i < $c; $i ++)
 		{
-			$retval[$i] = new \stdClass();
-			$retval[$i]->name = pg_field_name($this->resultID, $i);
-			$retval[$i]->type = pg_field_type($this->resultID, $i);
-			$retval[$i]->max_length = pg_field_size($this->resultID, $i);
-			// $retval[$i]->primary_key = (int)($fieldData[$i]->flags & 2);
-			// $retval[$i]->default     = $fieldData[$i]->def;
+			$retVal[$i]             = new \stdClass();
+			$retVal[$i]->name       = pg_field_name($this->resultID, $i);
+			$retVal[$i]->type       = pg_field_type($this->resultID, $i);
+			$retVal[$i]->max_length = pg_field_size($this->resultID, $i);
+			// $retVal[$i]->primary_key = (int)($fieldData[$i]->flags & 2);
+			// $retVal[$i]->default     = $fieldData[$i]->def;
 		}
 
-		return $retval;
+		return $retVal;
 	}
 
 	//--------------------------------------------------------------------
@@ -101,7 +106,7 @@ class Result extends BaseResult implements ResultInterface
 	/**
 	 * Frees the current result.
 	 *
-	 * @return mixed
+	 * @return void
 	 */
 	public function freeResult()
 	{
@@ -119,11 +124,11 @@ class Result extends BaseResult implements ResultInterface
 	 * internally before fetching results to make sure the result set
 	 * starts at zero.
 	 *
-	 * @param int $n
+	 * @param integer $n
 	 *
 	 * @return mixed
 	 */
-	public function dataSeek($n = 0)
+	public function dataSeek(int $n = 0)
 	{
 		return pg_result_seek($this->resultID, $n);
 	}
@@ -135,7 +140,7 @@ class Result extends BaseResult implements ResultInterface
 	 *
 	 * Overridden by driver classes.
 	 *
-	 * @return array
+	 * @return mixed
 	 */
 	protected function fetchAssoc()
 	{
@@ -151,10 +156,14 @@ class Result extends BaseResult implements ResultInterface
 	 *
 	 * @param string $className
 	 *
-	 * @return object
+	 * @return object|boolean|Entity
 	 */
-	protected function fetchObject($className = 'stdClass')
+	protected function fetchObject(string $className = 'stdClass')
 	{
+		if (is_subclass_of($className, Entity::class))
+		{
+			return empty($data = $this->fetchAssoc()) ? false : (new $className())->setAttributes($data);
+		}
 		return pg_fetch_object($this->resultID, null, $className);
 	}
 

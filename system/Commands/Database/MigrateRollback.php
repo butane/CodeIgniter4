@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Commands\Database;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +28,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package      CodeIgniter
- * @author       CodeIgniter Dev Team
- * @copyright    2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license      https://opensource.org/licenses/MIT	MIT License
- * @link         https://codeigniter.com
- * @since        Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Commands\Database;
+
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 use Config\Services;
@@ -69,7 +73,7 @@ class MigrateRollback extends BaseCommand
 	 *
 	 * @var string
 	 */
-	protected $description = 'Runs all of the migrations in reverse order, until they have all been un-applied.';
+	protected $description = 'Runs the "down" method for all migrations in the last batch.';
 
 	/**
 	 * the Command's usage
@@ -91,9 +95,8 @@ class MigrateRollback extends BaseCommand
 	 * @var array
 	 */
 	protected $options = [
-		'-n'	 => 'Set migration namespace',
-		'-g'	 => 'Set database group',
-		'-all'	 => 'Set latest for all namespace, will ignore (-n) option',
+		'-b' => 'Specify a batch to roll back to; e.g. "3" to return to batch #3 or "-2" to roll back twice',
+		'-g' => 'Set database group',
 	];
 
 	/**
@@ -106,46 +109,34 @@ class MigrateRollback extends BaseCommand
 	{
 		$runner = Services::migrations();
 
-		CLI::write(lang('Migrations.migRollingBack'), 'yellow');
-		$group = CLI::getOption('g');
-		if ( ! is_null($group))
+		$group = $params['-g'] ?? CLI::getOption('g');
+
+		if (! is_null($group))
 		{
 			$runner->setGroup($group);
 		}
+
 		try
 		{
-			if (is_null(CLI::getOption('all')))
+			$batch = $params['-b'] ?? CLI::getOption('b') ?? $runner->getLastBatch() - 1;
+			CLI::write(lang('Migrations.rollingBack') . ' ' . $batch, 'yellow');
+
+			if (! $runner->regress($batch))
 			{
-				$namespace = CLI::getOption('n');
-				$runner->version(0, $namespace);
+				CLI::write(lang('Migrations.generalFault'), 'red');
 			}
-			else
-			{
-				// Get all namespaces form  PSR4 paths.
-				$config = new Autoload();
-				$namespaces = $config->psr4;
-				foreach ($namespaces as $namespace => $path)
-				{
-					$runner->setNamespace($namespace);
-					$migrations = $runner->findMigrations();
-					if (empty($migrations))
-					{
-						continue;
-					}
-					$runner->version(0, $namespace, $group);
-				}
-			}
+
 			$messages = $runner->getCliMessages();
 			foreach ($messages as $message)
 			{
 				CLI::write($message);
 			}
-		} catch (\Exception $e)
+
+			CLI::write('Done');
+		}
+		catch (\Exception $e)
 		{
 			$this->showError($e);
 		}
-
-		CLI::write('Done');
 	}
-
 }

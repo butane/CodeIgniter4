@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\HTTP;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +28,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
+ */
+
+namespace CodeIgniter\HTTP;
+
+use CodeIgniter\HTTP\Exceptions\HTTPException;
+
+/**
+ * An HTTP message
  */
 class Message
 {
@@ -56,15 +65,21 @@ class Message
 
 	/**
 	 * Protocol version
+	 *
 	 * @var string
 	 */
 	protected $protocolVersion;
 
 	/**
 	 * List of valid protocol versions
+	 *
 	 * @var array
 	 */
-	protected $validProtocolVersions = ['1.0', '1.1', '2'];
+	protected $validProtocolVersions = [
+		'1.0',
+		'1.1',
+		'2',
+	];
 
 	/**
 	 * Message body
@@ -130,8 +145,8 @@ class Message
 	 */
 	public function populateHeaders()
 	{
-		$contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : getenv('CONTENT_TYPE');
-		if ( ! empty($contentType))
+		$contentType = $_SERVER['CONTENT_TYPE'] ?? getenv('CONTENT_TYPE');
+		if (! empty($contentType))
 		{
 			$this->setHeader('Content-Type', $contentType);
 		}
@@ -145,14 +160,7 @@ class Message
 				$header = str_replace('_', ' ', strtolower($header));
 				$header = str_replace(' ', '-', ucwords($header));
 
-				if (array_key_exists($key, $_SERVER))
-				{
-					$this->setHeader($header, $_SERVER[$key]);
-				}
-				else
-				{
-					$this->setHeader($header, '');
-				}
+				$this->setHeader($header, $_SERVER[$key]);
 
 				// Add us to the header map so we can find them case-insensitively
 				$this->headerMap[strtolower($header)] = $header;
@@ -186,17 +194,17 @@ class Message
 	 * Returns a single header object. If multiple headers with the same
 	 * name exist, then will return an array of header objects.
 	 *
-	 * @param string     $name
+	 * @param string $name
 	 *
 	 * @return array|\CodeIgniter\HTTP\Header
 	 */
-	public function getHeader($name)
+	public function getHeader(string $name)
 	{
 		$orig_name = $this->getHeaderName($name);
 
-		if ( ! isset($this->headers[$orig_name]))
+		if (! isset($this->headers[$orig_name]))
 		{
-			return NULL;
+			return null;
 		}
 
 		return $this->headers[$orig_name];
@@ -207,11 +215,11 @@ class Message
 	/**
 	 * Determines whether a header exists.
 	 *
-	 * @param $name
+	 * @param string $name
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
-	public function hasHeader($name): bool
+	public function hasHeader(string $name): bool
 	{
 		$orig_name = $this->getHeaderName($name);
 
@@ -239,16 +247,9 @@ class Message
 	{
 		$orig_name = $this->getHeaderName($name);
 
-		if ( ! array_key_exists($orig_name, $this->headers))
+		if (! array_key_exists($orig_name, $this->headers))
 		{
 			return '';
-		}
-
-		// If there are more than 1 headers with this name,
-		// then return the value of the first.
-		if (is_array($this->headers[$orig_name]))
-		{
-			return $this->headers[$orig_name][0]->getValueLine();
 		}
 
 		return $this->headers[$orig_name]->getValueLine();
@@ -259,34 +260,23 @@ class Message
 	/**
 	 * Sets a header and it's value.
 	 *
-	 * @param string $name
-	 * @param string $value
+	 * @param string            $name
+	 * @param array|null|string $value
 	 *
 	 * @return Message|Response
 	 */
 	public function setHeader(string $name, $value)
 	{
-		if ( ! isset($this->headers[$name]))
+		$origName = $this->getHeaderName($name);
+
+		if (isset($this->headers[$origName]) && is_array($this->headers[$origName]))
 		{
-			$this->headers[$name] = new Header($name, $value);
-
-			$this->headerMap[strtolower($name)] = $name;
-
-			return $this;
-		}
-
-		if ( ! is_array($this->headers[$name]))
-		{
-			$this->headers[$name] = [$this->headers[$name]];
-		}
-
-		if (isset($this->headers[$name]))
-		{
-			$this->headers[$name] = new Header($name, $value);
+			$this->appendHeader($origName, $value);
 		}
 		else
 		{
-			$this->headers[$name][] = new Header($name, $value);
+			$this->headers[$origName]               = new Header($origName, $value);
+			$this->headerMap[strtolower($origName)] = $origName;
 		}
 
 		return $this;
@@ -320,9 +310,9 @@ class Message
 	 * @param string $name
 	 * @param string $value
 	 *
-	 * @return string
+	 * @return Message
 	 */
-	public function appendHeader(string $name, $value)
+	public function appendHeader(string $name, string $value)
 	{
 		$orig_name = $this->getHeaderName($name);
 
@@ -340,9 +330,9 @@ class Message
 	 * @param string $name
 	 * @param string $value
 	 *
-	 * @return string
+	 * @return Message
 	 */
-	public function prependHeader(string $name, $value)
+	public function prependHeader(string $name, string $value)
 	{
 		$orig_name = $this->getHeaderName($name);
 
@@ -360,7 +350,7 @@ class Message
 	 */
 	public function getProtocolVersion(): string
 	{
-		return $this->protocolVersion;
+		return $this->protocolVersion ?? '1.1';
 	}
 
 	//--------------------------------------------------------------------
@@ -374,14 +364,14 @@ class Message
 	 */
 	public function setProtocolVersion(string $version)
 	{
-		if ( ! is_numeric($version))
+		if (! is_numeric($version))
 		{
 			$version = substr($version, strpos($version, '/') + 1);
 		}
 
-		if ( ! in_array($version, $this->validProtocolVersions))
+		if (! in_array($version, $this->validProtocolVersions))
 		{
-			throw new \InvalidArgumentException('Invalid HTTP Protocol Version. Must be one of: ' . implode(', ', $this->validProtocolVersions));
+			throw HTTPException::forInvalidHTTPProtocol(implode(', ', $this->validProtocolVersions));
 		}
 
 		$this->protocolVersion = $version;
@@ -399,11 +389,11 @@ class Message
 	 *
 	 * @return string
 	 */
-	protected function getHeaderName($name): string
+	protected function getHeaderName(string $name): string
 	{
 		$lower_name = strtolower($name);
 
-		return isset($this->headerMap[$lower_name]) ? $this->headerMap[$lower_name] : $name;
+		return $this->headerMap[$lower_name] ?? $name;
 	}
 
 	//--------------------------------------------------------------------

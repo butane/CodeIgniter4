@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Log\Handlers;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +28,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
+ */
+
+namespace CodeIgniter\Log\Handlers;
+
+/**
+ * Expected behavior for a Log handler
  */
 interface HandlerInterface
 {
@@ -47,7 +54,7 @@ interface HandlerInterface
 	 * @param $level
 	 * @param $message
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function handle($level, $message): bool;
 
@@ -59,7 +66,7 @@ interface HandlerInterface
 	 *
 	 * @param string $level
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function canHandle(string $level): bool;
 

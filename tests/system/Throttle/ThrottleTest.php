@@ -1,15 +1,34 @@
 <?php namespace CodeIgniter\Throttle;
 
-use CodeIgniter\Cache\Handlers\MockHandler;
+use Tests\Support\Cache\Handlers\MockHandler;
 
 class ThrottleTest extends \CIUnitTestCase
 {
 
-	public function setUp()
+	protected function setUp(): void
 	{
 		parent::setUp();
 
 		$this->cache = new MockHandler();
+	}
+
+	public function testTokenTime()
+	{
+		$throttler = new Throttler($this->cache);
+
+		// tokenTime should be 0 to start
+		$this->assertEquals(0, $throttler->getTokenTime());
+
+		// set $rate
+		$rate = 1;    // allow 1 request per minute
+
+		// first check just creates a bucket, so tokenTime should be 0
+		$throttler->check('127.0.0.1', $rate, MINUTE);
+		$this->assertEquals(0, $throttler->getTokenTime());
+
+		// additional check affects tokenTime, so tokenTime should be 1 or greater
+		$throttler->check('127.0.0.1', $rate, MINUTE);
+		$this->assertGreaterThanOrEqual(1, $throttler->getTokenTime());
 	}
 
 	public function testIPSavesBucket()
@@ -41,7 +60,6 @@ class ThrottleTest extends \CIUnitTestCase
 		$throttler->check('127.0.0.1', 1, MINUTE);
 
 		$this->assertFalse($throttler->check('127.0.0.1', 1, MINUTE));
-		$this->assertEquals(1, $throttler->getTokenTime());
 	}
 
 	public function testCosting()
@@ -62,7 +80,7 @@ class ThrottleTest extends \CIUnitTestCase
 		$throttler->check('127.0.0.1', $rate, MINUTE);
 		$this->assertEquals($rate - 1, $this->cache->get('throttler_127.0.0.1'));
 
-		sleep(2); // should be more tokens available
+		$throttler->setTestTime(strtotime('+2 seconds')); // should be more tokens available
 		$this->assertTrue($throttler->check('127.0.0.1', $rate, MINUTE));
 		// but the bucket should not be over-filled
 		$this->assertEquals($rate - 1, $this->cache->get('throttler_127.0.0.1'));
@@ -84,20 +102,23 @@ class ThrottleTest extends \CIUnitTestCase
 	{
 		$throttler = new Throttler($this->cache);
 
-		$rate = 60; // allow 1 per second, in theory
-		$cost = 40; // except we blow it
-		// first request passes
-		$this->assertTrue($throttler->check('127.0.0.1', $rate, MINUTE, $cost));
-		// and there should only be 20 units left
-		$this->assertEquals($rate - $cost, $this->cache->get('throttler_127.0.0.1'));
-		// a second request will be allowed, over-consuming the bucket
-		$this->assertTrue($throttler->check('127.0.0.1', $rate, MINUTE, $cost));
-		// but a third request isn't allowed through
+		$rate = 60; // allow 1 per second after the bucket is emptied
+		$cost = 1;
+
+		// Blow through the bucket in a natural way., with 1 second "grace"
+		for ($i = 0; $i <= $rate; $i++)
+		{
+			$throttler->check('127.0.0.1', $rate, MINUTE, $cost);
+		}
+
+		// Should be empty now.
 		$this->assertFalse($throttler->check('127.0.0.1', $rate, MINUTE, $cost));
-		// but if we sleep for a bit
-		sleep(2);
-		// then it will succeed
-		$this->assertTrue($throttler->check('127.0.0.1', $rate, MINUTE, $cost));
+		$this->assertEquals(0, $this->cache->get('throttler_127.0.0.1'));
+
+		$throttler = $throttler->setTestTime(strtotime('+10 seconds'));
+
+		$this->assertTrue($throttler->check('127.0.0.1', $rate, MINUTE, 0));
+		$this->assertEquals(10, round($this->cache->get('throttler_127.0.0.1')));
 	}
 
 }

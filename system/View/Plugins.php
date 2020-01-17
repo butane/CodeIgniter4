@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\View;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,59 +28,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\View;
+
+ /**
+  * View plugins
+  */
 class Plugins
 {
 
 	/**
+	 * Wrap helper function to use as view plugin.
+	 *
 	 * @param array $params
 	 *
 	 * @return string|\CodeIgniter\HTTP\URI
 	 */
 	public static function currentURL(array $params = [])
 	{
-		if ( ! function_exists('current_url'))
-			helper('url');
-
 		return current_url();
 	}
 
 	//--------------------------------------------------------------------
 
-
 	/**
+	 * Wrap helper function to use as view plugin.
+	 *
 	 * @param array $params
 	 *
 	 * @return \CodeIgniter\HTTP\URI|mixed|string
 	 */
 	public static function previousURL(array $params = [])
 	{
-		if ( ! function_exists('previous_url'))
-			helper('url');
-
 		return previous_url();
 	}
 
 	//--------------------------------------------------------------------
 
-
 	/**
+	 * Wrap helper function to use as view plugin.
+	 *
 	 * @param array $params
 	 *
 	 * @return string
 	 */
-	public static function mailto(array $params = [])
+	public static function mailto(array $params = []): string
 	{
-		if ( ! function_exists('mailto'))
-			helper('url');
-
 		$email = $params['email'] ?? '';
 		$title = $params['title'] ?? '';
 		$attrs = $params['attributes'] ?? '';
@@ -89,17 +91,15 @@ class Plugins
 
 	//--------------------------------------------------------------------
 
-
 	/**
+	 * Wrap helper function to use as view plugin.
+	 *
 	 * @param array $params
 	 *
 	 * @return string
 	 */
-	public static function safeMailto(array $params = [])
+	public static function safeMailto(array $params = []): string
 	{
-		if ( ! function_exists('safe_mailto'))
-			helper('url');
-
 		$email = $params['email'] ?? '';
 		$title = $params['title'] ?? '';
 		$attrs = $params['attributes'] ?? '';
@@ -109,17 +109,65 @@ class Plugins
 
 	//--------------------------------------------------------------------
 
-
 	/**
+	 * Wrap helper function to use as view plugin.
+	 *
 	 * @param array $params
 	 *
 	 * @return string
 	 */
-	public static function lang(array $params = [])
+	public static function lang(array $params = []): string
 	{
 		$line = array_shift($params);
 
 		return lang($line, $params);
 	}
 
+	//--------------------------------------------------------------------
+
+	/**
+	 * Wrap helper function to use as view plugin.
+	 *
+	 * @param array $params
+	 *
+	 * @return string
+	 */
+	public static function ValidationErrors(array $params = []): string
+	{
+		$validator = \Config\Services::validation();
+		if (empty($params))
+		{
+			return $validator->listErrors();
+		}
+
+		return $validator->showError($params['field']);
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * Wrap helper function to use as view plugin.
+	 *
+	 * @param array $params
+	 *
+	 * @return string|false
+	 */
+	public static function route(array $params = [])
+	{
+		return route_to(...$params);
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * Wrap helper function to use as view plugin.
+	 *
+	 * @param array $params
+	 *
+	 * @return string
+	 */
+	public static function siteURL(array $params = []): string
+	{
+		return site_url(...$params);
+	}
 }

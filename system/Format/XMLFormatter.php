@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Format;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +28,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
+ */
+
+namespace CodeIgniter\Format;
+
+use CodeIgniter\Format\Exceptions\FormatException;
+
+/**
+ * XML data formatter
  */
 class XMLFormatter implements FormatterInterface
 {
@@ -43,22 +52,23 @@ class XMLFormatter implements FormatterInterface
 	 *
 	 * @param $data
 	 *
-	 * @return mixed
+	 * @return string|boolean (XML string | false)
 	 */
-	public function format(array $data)
+	public function format($data)
 	{
-		$result = null;
-
 		// SimpleXML is installed but default
 		// but best to check, and then provide a fallback.
-		if ( ! extension_loaded('simplexml'))
+		if (! extension_loaded('simplexml'))
 		{
-			throw new \RuntimeException('The SimpleXML extension is required to format XML.');
+			// never thrown in travis-ci
+			// @codeCoverageIgnoreStart
+			throw FormatException::forMissingExtension();
+			// @codeCoverageIgnoreEnd
 		}
 
-		$output = new \SimpleXMLElement("<?xml version=\"1.0\"?><response></response>");
+		$output = new \SimpleXMLElement('<?xml version="1.0"?><response></response>');
 
-		$this->arrayToXML($data, $output);
+		$this->arrayToXML((array)$data, $output);
 
 		return $output->asXML();
 	}
@@ -81,7 +91,7 @@ class XMLFormatter implements FormatterInterface
 		{
 			if (is_array($value))
 			{
-				if ( ! is_numeric($key))
+				if (! is_numeric($key))
 				{
 					$subnode = $output->addChild("$key");
 					$this->arrayToXML($value, $subnode);

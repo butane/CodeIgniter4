@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Validation;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,17 +28,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
 
+namespace CodeIgniter\Validation;
+
 /**
- * Rules.
+ * Format validation Rules.
  *
  * @package CodeIgniter\Validation
  */
@@ -47,9 +50,9 @@ class FormatRules
 	/**
 	 * Alpha
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function alpha(string $str = null): bool
 	{
@@ -63,7 +66,7 @@ class FormatRules
 	 *
 	 * @param string $value Value.
 	 *
-	 * @return bool True if alpha with spaces, else false.
+	 * @return boolean True if alpha with spaces, else false.
 	 */
 	public function alpha_space(string $value = null): bool
 	{
@@ -80,9 +83,9 @@ class FormatRules
 	/**
 	 * Alpha-numeric with underscores and dashes
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function alpha_dash(string $str = null): bool
 	{
@@ -94,13 +97,13 @@ class FormatRules
 	/**
 	 * Alpha-numeric
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function alpha_numeric(string $str = null): bool
 	{
-		return ctype_alnum((string) $str);
+		return ctype_alnum($str);
 	}
 
 	//--------------------------------------------------------------------
@@ -108,11 +111,11 @@ class FormatRules
 	/**
 	 * Alpha-numeric w/ spaces
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
-	public function alpha_numeric_spaces(string $str = null): bool
+	public function alpha_numeric_space(string $str = null): bool
 	{
 		return (bool) preg_match('/^[A-Z0-9 ]+$/i', $str);
 	}
@@ -120,15 +123,46 @@ class FormatRules
 	//--------------------------------------------------------------------
 
 	/**
+	 * Any type of string
+	 *
+	 * Note: we specifically do NOT type hint $str here so that
+	 * it doesn't convert numbers into strings.
+	 *
+	 * @param string|null $str
+	 *
+	 * @return boolean
+	 */
+	public function string($str = null): bool
+	{
+		return is_string($str);
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
 	 * Decimal number
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function decimal(string $str = null): bool
 	{
-		return (bool) preg_match('/^[\-+]?[0-9]+\.[0-9]+$/', $str);
+		return (bool) preg_match('/^[\-+]?[0-9]+(|\.[0-9]+)$/', $str);
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * String of hexidecimal characters
+	 *
+	 * @param string $str
+	 *
+	 * @return boolean
+	 */
+	public function hex(string $str = null): bool
+	{
+		return ctype_xdigit($str);
 	}
 
 	//--------------------------------------------------------------------
@@ -136,9 +170,9 @@ class FormatRules
 	/**
 	 * Integer
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function integer(string $str = null): bool
 	{
@@ -150,12 +184,12 @@ class FormatRules
 	/**
 	 * Is a Natural number  (0,1,2,3, etc.)
 	 *
-	 * @param	string
-	 * @return	bool
+	 * @param  string $str
+	 * @return boolean
 	 */
 	public function is_natural(string $str = null): bool
 	{
-		return ctype_digit((string) $str);
+		return ctype_digit($str);
 	}
 
 	//--------------------------------------------------------------------
@@ -163,12 +197,12 @@ class FormatRules
 	/**
 	 * Is a Natural number, but not a zero  (1,2,3, etc.)
 	 *
-	 * @param	string
-	 * @return	bool
+	 * @param  string $str
+	 * @return boolean
 	 */
 	public function is_natural_no_zero(string $str = null): bool
 	{
-		return ($str != 0 && ctype_digit((string) $str));
+		return ($str !== '0' && ctype_digit($str));
 	}
 
 	//--------------------------------------------------------------------
@@ -176,9 +210,9 @@ class FormatRules
 	/**
 	 * Numeric
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function numeric(string $str = null): bool
 	{
@@ -192,13 +226,13 @@ class FormatRules
 	 *
 	 * @param string $str
 	 * @param string $pattern
-	 * @param array  $data Other field/value pairs
+	 * @param array  $data    Other field/value pairs
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function regex_match(string $str = null, string $pattern, array $data): bool
 	{
-		if (substr($pattern, 0, 1) != '/')
+		if (strpos($pattern, '/') !== 0)
 		{
 			$pattern = "/{$pattern}/";
 		}
@@ -216,7 +250,7 @@ class FormatRules
 	 *
 	 * @param string $str
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function timezone(string $str = null): bool
 	{
@@ -231,8 +265,8 @@ class FormatRules
 	 * Tests a string for characters outside of the Base64 alphabet
 	 * as defined by RFC 2045 http://www.faqs.org/rfcs/rfc2045
 	 *
-	 * @param	string
-	 * @return	bool
+	 * @param  string $str
+	 * @return boolean
 	 */
 	public function valid_base64(string $str = null): bool
 	{
@@ -242,17 +276,32 @@ class FormatRules
 	//--------------------------------------------------------------------
 
 	/**
+	 * Valid JSON
+	 *
+	 * @param string $str
+	 *
+	 * @return boolean
+	 */
+	public function valid_json(string $str = null): bool
+	{
+		json_decode($str);
+		return json_last_error() === JSON_ERROR_NONE;
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
 	 * Checks for a correctly formatted email address
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function valid_email(string $str = null): bool
 	{
-		if (function_exists('idn_to_ascii') && $atpos = strpos($str, '@'))
+		if (function_exists('idn_to_ascii') && defined('INTL_IDNA_VARIANT_UTS46') && preg_match('#\A([^@]+)@(.+)\z#', $str, $matches))
 		{
-			$str = substr($str, 0, ++ $atpos) . idn_to_ascii(substr($str, $atpos));
+			$str = $matches[1] . '@' . idn_to_ascii($matches[2], 0, INTL_IDNA_VARIANT_UTS46);
 		}
 
 		return (bool) filter_var($str, FILTER_VALIDATE_EMAIL);
@@ -264,22 +313,23 @@ class FormatRules
 	 * Validate a comma-separated list of email addresses.
 	 *
 	 * Example:
-	 * 	valid_emails[one@example.com,two@example.com]
+	 *     valid_emails[one@example.com,two@example.com]
 	 *
-	 * @param    string
+	 * @param string $str
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function valid_emails(string $str = null): bool
 	{
-		if (strpos($str, ',') === false)
-		{
-			return $this->valid_email(trim($str));
-		}
-
 		foreach (explode(',', $str) as $email)
 		{
-			if (trim($email) !== '' && $this->valid_email(trim($email)) === false)
+			$email = trim($email);
+			if ($email === '')
+			{
+				return false;
+			}
+
+			if ($this->valid_email($email) === false)
 			{
 				return false;
 			}
@@ -297,7 +347,7 @@ class FormatRules
 	 * @param string $which IP protocol: 'ipv4' or 'ipv6'
 	 * @param array  $data
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function valid_ip(string $ip = null, string $which = null, array $data): bool
 	{
@@ -324,7 +374,7 @@ class FormatRules
 	 *
 	 * @param string $str
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function valid_url(string $str = null): bool
 	{
@@ -334,11 +384,7 @@ class FormatRules
 		}
 		elseif (preg_match('/^(?:([^:]*)\:)?\/\/(.+)$/', $str, $matches))
 		{
-			if (empty($matches[2]))
-			{
-				return false;
-			}
-			elseif ( ! in_array($matches[1], ['http', 'https'], true))
+			if (! in_array($matches[1], ['http', 'https'], true))
 			{
 				return false;
 			}
@@ -349,6 +395,28 @@ class FormatRules
 		$str = 'http://' . $str;
 
 		return (filter_var($str, FILTER_VALIDATE_URL) !== false);
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * Checks for a valid date and matches a given date format
+	 *
+	 * @param string $str
+	 * @param string $format
+	 *
+	 * @return boolean
+	 */
+	public function valid_date(string $str = null, string $format = null): bool
+	{
+		if (empty($format))
+		{
+			return (bool) strtotime($str);
+		}
+
+		$date = \DateTime::createFromFormat($format, $str);
+
+		return (bool) $date && \DateTime::getLastErrors()['warning_count'] === 0 && \DateTime::getLastErrors()['error_count'] === 0;
 	}
 
 	//--------------------------------------------------------------------

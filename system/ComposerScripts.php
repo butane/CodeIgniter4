@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +28,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package      CodeIgniter
- * @author       CodeIgniter Dev Team
- * @copyright    2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license      https://opensource.org/licenses/MIT	MIT License
- * @link         https://codeigniter.com
- * @since        Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter;
+
+use ReflectionClass;
 
 /**
  * ComposerScripts
@@ -45,16 +50,23 @@
  * download
  *
  * @codeCoverageIgnore
- * @package CodeIgniter
+ * @package            CodeIgniter
  */
 class ComposerScripts
 {
-	protected static $basePath = 'system/ThirdParty/';
+	/**
+	 * Base path to use.
+	 *
+	 * @var type
+	 */
+	protected static $basePath = 'ThirdParty/';
 
 	/**
 	 * After composer install/update, this is called to move
 	 * the bare-minimum required files for our dependencies
 	 * to appropriate locations.
+	 *
+	 * @throws \ReflectionException
 	 */
 	public static function postUpdate()
 	{
@@ -72,7 +84,7 @@ class ComposerScripts
 	 *
 	 * @return boolean
 	 */
-	protected static function moveFile(string $source, string $destination)
+	protected static function moveFile(string $source, string $destination): bool
 	{
 		$source = realpath($source);
 
@@ -97,10 +109,11 @@ class ComposerScripts
 	 * @param string $class
 	 *
 	 * @return string
+	 * @throws \ReflectionException
 	 */
 	protected static function getClassFilePath(string $class)
 	{
-		$reflector = new \ReflectionClass($class);
+		$reflector = new ReflectionClass($class);
 
 		return $reflector->getFileName();
 	}
@@ -119,15 +132,15 @@ class ComposerScripts
 			$objects = scandir($dir);
 			foreach ($objects as $object)
 			{
-				if ($object != "." && $object != "..")
+				if ($object !== '.' && $object !== '..')
 				{
-					if (filetype($dir."/".$object) == "dir")
+					if (filetype($dir . '/' . $object) === 'dir')
 					{
-						static::removeDir($dir."/".$object);
+						static::removeDir($dir . '/' . $object);
 					}
 					else
 					{
-						unlink($dir."/".$object);
+						unlink($dir . '/' . $object);
 					}
 				}
 			}
@@ -137,16 +150,18 @@ class ComposerScripts
 	}
 
 	/**
-	 * Moves the Zend Escaper files into our base repo so that it's
+	 * Moves the Laminas Escaper files into our base repo so that it's
 	 * available for packaged releases where the users don't user Composer.
+	 *
+	 * @throws \ReflectionException
 	 */
 	public static function moveEscaper()
 	{
-		if (class_exists('\\Zend\\Escaper\\Escaper') && file_exists(self::getClassFilePath('\\Zend\\Escaper\\Escaper')))
+		if (class_exists('\\Laminas\\Escaper\\Escaper') && is_file(static::getClassFilePath('\\Laminas\\Escaper\\Escaper')))
 		{
-			$base = static::$basePath.'ZendEscaper';
+			$base = basename(__DIR__) . '/' . static::$basePath . 'Escaper';
 
-			foreach ([$base, $base.'/Exception'] as $path)
+			foreach ([$base, $base . '/Exception'] as $path)
 			{
 				if (! is_dir($path))
 				{
@@ -155,17 +170,17 @@ class ComposerScripts
 			}
 
 			$files = [
-				self::getClassFilePath('\\Zend\\Escaper\\Exception\\ExceptionInterface')       => $base.'/Exception/ExceptionInterface.php',
-				self::getClassFilePath('\\Zend\\Escaper\\Exception\\InvalidArgumentException') => $base.'/Exception/InvalidArgumentException.php',
-				self::getClassFilePath('\\Zend\\Escaper\\Exception\\RuntimeException')         => $base.'/Exception/RuntimeException.php',
-				self::getClassFilePath('\\Zend\\Escaper\\Escaper')                             => $base.'/Escaper.php',
+				static::getClassFilePath('\\Laminas\\Escaper\\Exception\\ExceptionInterface')       => $base . '/Exception/ExceptionInterface.php',
+				static::getClassFilePath('\\Laminas\\Escaper\\Exception\\InvalidArgumentException') => $base . '/Exception/InvalidArgumentException.php',
+				static::getClassFilePath('\\Laminas\\Escaper\\Exception\\RuntimeException')         => $base . '/Exception/RuntimeException.php',
+				static::getClassFilePath('\\Laminas\\Escaper\\Escaper')                             => $base . '/Escaper.php',
 			];
 
 			foreach ($files as $source => $dest)
 			{
-				if (! self::moveFile($source, $dest))
+				if (! static::moveFile($source, $dest))
 				{
-					die('Error moving: '.$source);
+					die('Error moving: ' . $source);
 				}
 			}
 		}
@@ -181,9 +196,9 @@ class ComposerScripts
 	{
 		$filename = 'vendor/kint-php/kint/build/kint-aante-light.php';
 
-		if (file_exists($filename))
+		if (is_file($filename))
 		{
-			$base = static::$basePath.'Kint';
+			$base = basename(__DIR__) . '/' . static::$basePath . 'Kint';
 
 			// Remove the contents of the previous Kint folder, if any.
 			if (is_dir($base))
@@ -197,9 +212,9 @@ class ComposerScripts
 				mkdir($base, 0755);
 			}
 
-			if (! self::moveFile($filename, $base.'/kint.php'))
+			if (! static::moveFile($filename, $base . '/kint.php'))
 			{
-				die('Error moving: '.$filename);
+				die('Error moving: ' . $filename);
 			}
 		}
 	}

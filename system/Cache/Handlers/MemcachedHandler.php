@@ -1,5 +1,4 @@
-<?php namespace CodeIgniter\Cache\Handlers;
-
+<?php
 /**
  * CodeIgniter
  *
@@ -7,7 +6,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +27,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
-use CodeIgniter\Cache\CacheInterface;
 
+namespace CodeIgniter\Cache\Handlers;
+
+use CodeIgniter\Cache\CacheInterface;
+use CodeIgniter\Exceptions\CriticalError;
+
+/**
+ * Mamcached cache handler
+ */
 class MemcachedHandler implements CacheInterface
 {
 
@@ -60,21 +67,28 @@ class MemcachedHandler implements CacheInterface
 	 * @var array
 	 */
 	protected $config = [
-		'host'	 => '127.0.0.1',
-		'port'	 => 11211,
+		'host'   => '127.0.0.1',
+		'port'   => 11211,
 		'weight' => 1,
-		'raw'	 => false,
+		'raw'    => false,
 	];
 
 	//--------------------------------------------------------------------
 
-	public function __construct(array $config)
+	/**
+	 * Constructor.
+	 *
+	 * @param  type $config
+	 * @throws type
+	 */
+	public function __construct($config)
 	{
+		$config       = (array)$config;
 		$this->prefix = $config['prefix'] ?? '';
 
-		if ( ! empty($config))
+		if (! empty($config))
 		{
-			$this->config = array_merge($this->config, $config);
+			$this->config = array_merge($this->config, $config['memcached']);
 		}
 	}
 
@@ -102,35 +116,69 @@ class MemcachedHandler implements CacheInterface
 	 */
 	public function initialize()
 	{
-		if (class_exists('\Memcached'))
+		// Try to connect to Memcache or Memcached, if an issue occurs throw a CriticalError exception,
+		// so that the CacheFactory can attempt to initiate the next cache handler.
+		try
 		{
-			$this->memcached = new \Memcached();
-			if ($this->config['raw'])
+			if (class_exists('\Memcached'))
 			{
-				$this->memcached->setOption(\Memcached::OPT_BINARY_PROTOCOL, true);
+				// Create new instance of \Memcached
+				$this->memcached = new \Memcached();
+				if ($this->config['raw'])
+				{
+					$this->memcached->setOption(\Memcached::OPT_BINARY_PROTOCOL, true);
+				}
+
+				// Add server
+				$this->memcached->addServer(
+					$this->config['host'], $this->config['port'], $this->config['weight']
+				);
+
+				// attempt to get status of servers
+				$stats = $this->memcached->getStats();
+
+				// $stats should be an associate array with a key in the format of host:port.
+				// If it doesn't have the key, we know the server is not working as expected.
+				if (! isset($stats[$this->config['host'] . ':' . $this->config['port']]))
+				{
+					throw new CriticalError('Cache: Memcached connection failed.');
+				}
+			}
+			elseif (class_exists('\Memcache'))
+			{
+				// Create new instance of \Memcache
+				$this->memcached = new \Memcache();
+
+				// Check if we can connect to the server
+				$can_connect = $this->memcached->connect(
+					$this->config['host'], $this->config['port']
+				);
+
+				// If we can't connect, throw a CriticalError exception
+				if ($can_connect === false)
+				{
+					throw new CriticalError('Cache: Memcache connection failed.');
+				}
+
+				// Add server, third parameter is persistence and defaults to TRUE.
+				$this->memcached->addServer(
+					$this->config['host'], $this->config['port'], true, $this->config['weight']
+				);
+			}
+			else
+			{
+				throw new CriticalError('Cache: Not support Memcache(d) extension.');
 			}
 		}
-		elseif (class_exists('\Memcache'))
+		catch (CriticalError $e)
 		{
-			$this->memcached = new \Memcache();
+			// If a CriticalError exception occurs, throw it up.
+			throw $e;
 		}
-		else
+		catch (\Exception $e)
 		{
-			throw new CriticalError('Cache: Not support Memcache(d) extension.');
-		}
-
-		if ($this->memcached instanceof \Memcached)
-		{
-			$this->memcached->addServer(
-					$this->config['host'], $this->config['port'], $this->config['weight']
-			);
-		}
-		elseif ($this->memcached instanceof \Memcache)
-		{
-			// Third parameter is persistance and defaults to TRUE.
-			$this->memcached->addServer(
-					$this->config['host'], $this->config['port'], true, $this->config['weight']
-			);
+			// If an \Exception occurs, convert it into a CriticalError exception and throw it.
+			throw new CriticalError('Cache: Memcache(d) connection refused (' . $e->getMessage() . ').');
 		}
 	}
 
@@ -147,7 +195,27 @@ class MemcachedHandler implements CacheInterface
 	{
 		$key = $this->prefix . $key;
 
-		$data = $this->memcached->get($key);
+		if ($this->memcached instanceof \Memcached)
+		{
+			$data = $this->memcached->get($key);
+
+			// check for unmatched key
+			if ($this->memcached->getResultCode() === \Memcached::RES_NOTFOUND)
+			{
+				return null;
+			}
+		}
+		elseif ($this->memcached instanceof \Memcache)
+		{
+			$flags = false;
+			$data  = $this->memcached->get($key, $flags);
+
+			// check for unmatched key (i.e. $flags is untouched)
+			if ($flags === false)
+			{
+				return null;
+			}
+		}
 
 		return is_array($data) ? $data[0] : $data;
 	}
@@ -157,9 +225,9 @@ class MemcachedHandler implements CacheInterface
 	/**
 	 * Saves an item to the cache store.
 	 *
-	 * @param string $key   Cache item name
-	 * @param mixed  $value The data to save
-	 * @param int    $ttl   Time To Live, in seconds (default 60)
+	 * @param string  $key   Cache item name
+	 * @param mixed   $value The data to save
+	 * @param integer $ttl   Time To Live, in seconds (default 60)
 	 *
 	 * @return mixed
 	 */
@@ -167,9 +235,13 @@ class MemcachedHandler implements CacheInterface
 	{
 		$key = $this->prefix . $key;
 
-		if ( ! $this->config['raw'])
+		if (! $this->config['raw'])
 		{
-			$value = [$value, time(), $ttl];
+			$value = [
+				$value,
+				time(),
+				$ttl,
+			];
 		}
 
 		if ($this->memcached instanceof \Memcached)
@@ -205,14 +277,14 @@ class MemcachedHandler implements CacheInterface
 	/**
 	 * Performs atomic incrementation of a raw stored value.
 	 *
-	 * @param string $key    Cache ID
-	 * @param int    $offset Step/value to increase by
+	 * @param string  $key    Cache ID
+	 * @param integer $offset Step/value to increase by
 	 *
 	 * @return mixed
 	 */
 	public function increment(string $key, int $offset = 1)
 	{
-		if ( ! $this->config['raw'])
+		if (! $this->config['raw'])
 		{
 			return false;
 		}
@@ -227,14 +299,14 @@ class MemcachedHandler implements CacheInterface
 	/**
 	 * Performs atomic decrementation of a raw stored value.
 	 *
-	 * @param string $key    Cache ID
-	 * @param int    $offset Step/value to increase by
+	 * @param string  $key    Cache ID
+	 * @param integer $offset Step/value to increase by
 	 *
 	 * @return mixed
 	 */
 	public function decrement(string $key, int $offset = 1)
 	{
-		if ( ! $this->config['raw'])
+		if (! $this->config['raw'])
 		{
 			return false;
 		}
@@ -287,17 +359,18 @@ class MemcachedHandler implements CacheInterface
 
 		$stored = $this->memcached->get($key);
 
-		if (count($stored) !== 3)
+		// if not an array, don't try to count for PHP7.2
+		if (! is_array($stored) || count($stored) !== 3)
 		{
-			return FALSE;
+			return false;
 		}
 
 		list($data, $time, $ttl) = $stored;
 
 		return [
 			'expire' => $time + $ttl,
-			'mtime'	 => $time,
-			'data'	 => $data
+			'mtime'  => $time,
+			'data'   => $data,
 		];
 	}
 
@@ -310,7 +383,7 @@ class MemcachedHandler implements CacheInterface
 	 */
 	public function isSupported(): bool
 	{
-		return (extension_loaded('memcached') OR extension_loaded('memcache'));
+		return (extension_loaded('memcached') || extension_loaded('memcache'));
 	}
 
 }

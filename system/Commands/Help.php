@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Commands;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +28,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Commands;
+
 use CodeIgniter\CLI\BaseCommand;
-use CodeIgniter\CLI\CLI;
 
 /**
  * CI Help command for the spark script.
@@ -84,7 +87,7 @@ class Help extends BaseCommand
 	 * @var array
 	 */
 	protected $arguments = [
-		'command_name' => 'The command name [default: "help"]'
+		'command_name' => 'The command name [default: "help"]',
 	];
 
 	/**
@@ -110,7 +113,7 @@ class Help extends BaseCommand
 		}
 
 		$commands = $this->commands->getCommands();
-		$class = new $commands[$command]['class']($this->logger, $this->commands);
+		$class    = new $commands[$command]['class']($this->logger, $this->commands);
 
 		$class->showHelp();
 	}

@@ -1,5 +1,4 @@
-<?php namespace CodeIgniter\Database;
-
+<?php
 /**
  * CodeIgniter
  *
@@ -7,7 +6,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +27,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Database;
 
 /**
  * Query builder
@@ -70,7 +72,7 @@ class Query implements QueryInterface
 	 *
 	 * Character used to identify values in a prepared statement.
 	 *
-	 * @var    string
+	 * @var string
 	 */
 	protected $bindMarker = '?';
 
@@ -93,7 +95,7 @@ class Query implements QueryInterface
 	/**
 	 * The error code, if any.
 	 *
-	 * @var int
+	 * @var integer
 	 */
 	protected $errorCode;
 
@@ -129,17 +131,32 @@ class Query implements QueryInterface
 	/**
 	 * Sets the raw query string to use for this statement.
 	 *
-	 * @param string $sql
-	 * @param array $binds
+	 * @param string  $sql
+	 * @param mixed   $binds
+	 * @param boolean $setEscape
 	 *
-	 * @return mixed
+	 * @return $this
 	 */
-	public function setQuery(string $sql, $binds = null)
+	public function setQuery(string $sql, $binds = null, bool $setEscape = true)
 	{
 		$this->originalQueryString = $sql;
 
-		if ( ! is_null($binds))
+		if (! is_null($binds))
 		{
+			if (! is_array($binds))
+			{
+				$binds = [$binds];
+			}
+
+			if ($setEscape)
+			{
+				array_walk($binds, function (&$item) {
+					$item = [
+						$item,
+						true,
+					];
+				});
+			}
 			$this->binds = $binds;
 		}
 
@@ -168,7 +185,7 @@ class Query implements QueryInterface
 	 * Returns the final, processed query string after binding, etal
 	 * has been performed.
 	 *
-	 * @return mixed
+	 * @return string
 	 */
 	public function getQuery(): string
 	{
@@ -192,7 +209,7 @@ class Query implements QueryInterface
 	 * @param float $start
 	 * @param float $end
 	 *
-	 * @return mixed
+	 * @return $this
 	 */
 	public function setDuration(float $start, float $end = null)
 	{
@@ -213,12 +230,12 @@ class Query implements QueryInterface
 	/**
 	 * Returns the start time in seconds with microseconds.
 	 *
-	 * @param bool $returnRaw
-	 * @param int $decimals
+	 * @param boolean $returnRaw
+	 * @param integer $decimals
 	 *
-	 * @return mixed
+	 * @return string
 	 */
-	public function getStartTime($returnRaw = false, int $decimals = 6)
+	public function getStartTime(bool $returnRaw = false, int $decimals = 6): string
 	{
 		if ($returnRaw)
 		{
@@ -233,11 +250,11 @@ class Query implements QueryInterface
 	 * Returns the duration of this query during execution, or null if
 	 * the query has not been executed yet.
 	 *
-	 * @param int $decimals The accuracy of the returned time.
+	 * @param integer $decimals The accuracy of the returned time.
 	 *
-	 * @return mixed
+	 * @return string
 	 */
-	public function getDuration(int $decimals = 6)
+	public function getDuration(int $decimals = 6): string
 	{
 		return number_format(($this->endTime - $this->startTime), $decimals);
 	}
@@ -247,14 +264,14 @@ class Query implements QueryInterface
 	/**
 	 * Stores the error description that happened for this query.
 	 *
-	 * @param int    $code
-	 * @param string $error
+	 * @param integer $code
+	 * @param string  $error
 	 *
-	 * @return Query
+	 * @return $this
 	 */
 	public function setError(int $code, string $error)
 	{
-		$this->errorCode = $code;
+		$this->errorCode   = $code;
 		$this->errorString = $error;
 
 		return $this;
@@ -265,7 +282,7 @@ class Query implements QueryInterface
 	/**
 	 * Reports whether this statement created an error not.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function hasError(): bool
 	{
@@ -277,7 +294,7 @@ class Query implements QueryInterface
 	/**
 	 * Returns the error code created while executing this statement.
 	 *
-	 * @return int
+	 * @return integer
 	 */
 	public function getErrorCode(): int
 	{
@@ -301,7 +318,7 @@ class Query implements QueryInterface
 	/**
 	 * Determines if the statement is a write-type query or not.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function isWriteType(): bool
 	{
@@ -317,7 +334,7 @@ class Query implements QueryInterface
 	 * @param string $orig
 	 * @param string $swap
 	 *
-	 * @return mixed
+	 * @return $this
 	 */
 	public function swapPrefix(string $orig, string $swap)
 	{
@@ -335,7 +352,7 @@ class Query implements QueryInterface
 	 *
 	 * @return string
 	 */
-	public function getOriginalQuery()
+	public function getOriginalQuery(): string
 	{
 		return $this->originalQueryString;
 	}
@@ -344,6 +361,8 @@ class Query implements QueryInterface
 
 	/**
 	 * Escapes and inserts any binds into the finalQueryString object.
+	 *
+	 * @return null|void
 	 */
 	protected function compileBinds()
 	{
@@ -359,20 +378,20 @@ class Query implements QueryInterface
 			return;
 		}
 
-		if ( ! is_array($this->binds))
+		if (! is_array($this->binds))
 		{
-			$binds = [$this->binds];
+			$binds     = [$this->binds];
 			$bindCount = 1;
 		}
 		else
 		{
-			$binds = $this->binds;
+			$binds     = $this->binds;
 			$bindCount = count($binds);
 		}
 
 		// Reverse the binds so that duplicate named binds
 		// will be processed prior to the original binds.
-		if ( ! is_numeric(key(array_slice($binds, 0, 1))))
+		if (! is_numeric(key(array_slice($binds, 0, 1))))
 		{
 			$binds = array_reverse($binds);
 		}
@@ -396,29 +415,29 @@ class Query implements QueryInterface
 
 	/**
 	 * Match bindings
-	 * @param string $sql
-	 * @param array $binds
+	 *
+	 * @param  string $sql
+	 * @param  array  $binds
 	 * @return string
 	 */
-	protected function matchNamedBinds(string $sql, array $binds)
+	protected function matchNamedBinds(string $sql, array $binds): string
 	{
 		$replacers = [];
 
 		foreach ($binds as $placeholder => $value)
 		{
-			$escapedValue = $this->db->escape($value);
+			// $value[1] contains the boolean whether should be escaped or not
+			$escapedValue = $value[1] ? $this->db->escape($value[0]) : $value[0];
 
 			// In order to correctly handle backlashes in saved strings
 			// we will need to preg_quote, so remove the wrapping escape characters
 			// otherwise it will get escaped.
-			if (is_array($value))
+			if (is_array($value[0]))
 			{
 				$escapedValue = '(' . implode(',', $escapedValue) . ')';
 			}
 
 			$replacers[":{$placeholder}:"] = $escapedValue;
-
-//			$sql = preg_replace('|:' . $placeholder . '(?!\w)|', $escapedValue, $sql);
 		}
 
 		$sql = strtr($sql, $replacers);
@@ -430,13 +449,14 @@ class Query implements QueryInterface
 
 	/**
 	 * Match bindings
-	 * @param string $sql
-	 * @param array $binds
-	 * @param int $bindCount
-	 * @param int $ml
+	 *
+	 * @param  string  $sql
+	 * @param  array   $binds
+	 * @param  integer $bindCount
+	 * @param  integer $ml
 	 * @return string
 	 */
-	protected function matchSimpleBinds(string $sql, array $binds, int $bindCount, int $ml)
+	protected function matchSimpleBinds(string $sql, array $binds, int $bindCount, int $ml): string
 	{
 		// Make sure not to replace a chunk inside a string that happens to match the bind marker
 		if ($c = preg_match_all("/'[^']*'/i", $sql, $matches))
@@ -457,14 +477,15 @@ class Query implements QueryInterface
 
 		do
 		{
-			$c --;
-			$escapedValue = $this->db->escape($binds[$c]);
+			$c--;
+			$escapedValue = $binds[$c][1] ? $this->db->escape($binds[$c][0]) : $binds[$c][0];
 			if (is_array($escapedValue))
 			{
 				$escapedValue = '(' . implode(',', $escapedValue) . ')';
 			}
 			$sql = substr_replace($sql, $escapedValue, $matches[0][$c][1], $ml);
-		} while ($c !== 0);
+		}
+		while ($c !== 0);
 
 		return $sql;
 	}
@@ -474,9 +495,9 @@ class Query implements QueryInterface
 	/**
 	 * Return text representation of the query
 	 *
-	 * @return mixed|string
+	 * @return string
 	 */
-	public function __toString()
+	public function __toString(): string
 	{
 		return $this->getQuery();
 	}

@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Session\Handlers;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +28,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Session\Handlers;
+
 use CodeIgniter\Config\BaseConfig;
 use Psr\Log\LoggerAwareTrait;
 
@@ -49,7 +53,7 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	/**
 	 * The Data fingerprint.
 	 *
-	 * @var bool
+	 * @var boolean
 	 */
 	protected $fingerprint;
 
@@ -63,71 +67,85 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	/**
 	 * Cookie prefix
 	 *
-	 * @var type
+	 * @var string
 	 */
 	protected $cookiePrefix = '';
 
 	/**
 	 * Cookie domain
 	 *
-	 * @var type
+	 * @var string
 	 */
 	protected $cookieDomain = '';
 
 	/**
 	 * Cookie path
-	 * @var type
+	 *
+	 * @var string
 	 */
 	protected $cookiePath = '/';
 
 	/**
 	 * Cookie secure?
 	 *
-	 * @var type
+	 * @var boolean
 	 */
 	protected $cookieSecure = false;
 
 	/**
 	 * Cookie name to use
-	 * @var type
+	 *
+	 * @var string
 	 */
 	protected $cookieName;
 
 	/**
 	 * Match IP addresses for cookies?
 	 *
-	 * @var type
+	 * @var boolean
 	 */
 	protected $matchIP = false;
 
 	/**
 	 * Current session ID
-	 * @var type
+	 *
+	 * @var string
 	 */
 	protected $sessionID;
 
 	/**
 	 * The 'save path' for the session
 	 * varies between
-	 * @var mixed
+	 *
+	 * @var string
 	 */
 	protected $savePath;
+
+	/**
+	 * User's IP address.
+	 *
+	 * @var string
+	 */
+	protected $ipAddress;
 
 	//--------------------------------------------------------------------
 
 	/**
 	 * Constructor
+	 *
 	 * @param BaseConfig $config
+	 * @param string     $ipAddress
 	 */
-	public function __construct($config)
+	public function __construct($config, string $ipAddress)
 	{
 		$this->cookiePrefix = $config->cookiePrefix;
 		$this->cookieDomain = $config->cookieDomain;
-		$this->cookiePath = $config->cookiePath;
+		$this->cookiePath   = $config->cookiePath;
 		$this->cookieSecure = $config->cookieSecure;
-		$this->cookieName = $config->sessionCookieName;
-		$this->matchIP = $config->sessionMatchIP;
-		$this->savePath = $config->sessionSavePath;
+		$this->cookieName   = $config->sessionCookieName;
+		$this->matchIP      = $config->sessionMatchIP;
+		$this->savePath     = $config->sessionSavePath;
+		$this->ipAddress    = $ipAddress;
 	}
 
 	//--------------------------------------------------------------------
@@ -136,7 +154,7 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	 * Internal method to force removal of a cookie by the client
 	 * when session_destroy() is called.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	protected function destroyCookie(): bool
 	{
@@ -154,7 +172,7 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	 *
 	 * @param string $sessionID
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	protected function lockSession(string $sessionID): bool
 	{
@@ -167,7 +185,7 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	/**
 	 * Releases the lock, if any.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	protected function releaseLock(): bool
 	{
@@ -189,13 +207,12 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	 * so that the INI is set just in time for the error message to
 	 * be properly generated.
 	 *
-	 * @return	mixed
+	 * @return boolean
 	 */
-	protected function fail()
+	protected function fail(): bool
 	{
 		ini_set('session.save_path', $this->savePath);
 
 		return false;
 	}
-
 }

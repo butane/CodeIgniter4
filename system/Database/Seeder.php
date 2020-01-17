@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Database;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +28,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Database;
+
 use CodeIgniter\CLI\CLI;
 use CodeIgniter\Config\BaseConfig;
 
@@ -46,37 +50,43 @@ class Seeder
 
 	/**
 	 * The name of the database group to use.
+	 *
 	 * @var string
 	 */
 	protected $DBGroup;
 
 	/**
 	 * Where we can find the Seed files.
+	 *
 	 * @var string
 	 */
 	protected $seedPath;
 
 	/**
 	 * An instance of the main Database configuration
+	 *
 	 * @var BaseConfig
 	 */
 	protected $config;
 
 	/**
 	 * Database Connection instance
+	 *
 	 * @var BaseConnection
 	 */
 	protected $db;
 
 	/**
 	 * Database Forge instance.
+	 *
 	 * @var Forge
 	 */
 	protected $forge;
 
 	/**
 	 * If true, will not display CLI messages.
-	 * @var bool
+	 *
+	 * @var boolean
 	 */
 	protected $silent = false;
 
@@ -85,7 +95,7 @@ class Seeder
 	/**
 	 * Seeder constructor.
 	 *
-	 * @param BaseConfig $config
+	 * @param BaseConfig     $config
 	 * @param BaseConnection $db
 	 */
 	public function __construct(BaseConfig $config, BaseConnection $db = null)
@@ -99,7 +109,7 @@ class Seeder
 
 		$this->seedPath = rtrim($this->seedPath, '/') . '/Seeds/';
 
-		if ( ! is_dir($this->seedPath))
+		if (! is_dir($this->seedPath))
 		{
 			throw new \InvalidArgumentException('Unable to locate the seeds directory. Please check Config\Database::filesPath');
 		}
@@ -142,19 +152,23 @@ class Seeder
 		{
 			$path = $this->seedPath . $path;
 
-			if ( ! is_file($path))
+			if (! is_file($path))
 			{
 				throw new \InvalidArgumentException('The specified Seeder is not a valid file: ' . $path);
 			}
 
-			if ( ! class_exists($class, false))
+			// Assume the class has the correct namespace
+			$class = APP_NAMESPACE . '\Database\Seeds\\' . $class;
+
+			if (! class_exists($class, false))
 			{
-				require $path;
+				require_once $path;
 			}
 
 			$seeder = new $class($this->config);
 		}
 
+		$seeder->setSilent($this->silent);
 		$seeder->run();
 
 		unset($seeder);
@@ -186,7 +200,7 @@ class Seeder
 	/**
 	 * Sets the silent treatment.
 	 *
-	 * @param bool $silent
+	 * @param boolean $silent
 	 *
 	 * @return Seeder
 	 */
@@ -209,7 +223,6 @@ class Seeder
 	 */
 	public function run()
 	{
-
 	}
 
 	//--------------------------------------------------------------------

@@ -1,4 +1,5 @@
-<?php namespace CodeIgniter\CLI;
+<?php
+
 
 /**
  * CodeIgniter
@@ -7,7 +8,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +29,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\CLI;
+
+use Config\Services;
 use CodeIgniter\Controller;
 
+/**
+ * Command runner
+ */
 class CommandRunner extends Controller
 {
 
@@ -47,6 +56,13 @@ class CommandRunner extends Controller
 	 */
 	protected $commands = [];
 
+	/**
+	 * Message logger.
+	 *
+	 * @var \CodeIgniter\Log\Logger
+	 */
+	protected $logger;
+
 	//--------------------------------------------------------------------
 
 	/**
@@ -55,6 +71,9 @@ class CommandRunner extends Controller
 	 *
 	 * @param string $method
 	 * @param array  ...$params
+	 *
+	 * @return mixed
+	 * @throws \ReflectionException
 	 */
 	public function _remap($method, ...$params)
 	{
@@ -64,16 +83,18 @@ class CommandRunner extends Controller
 			array_shift($params);
 		}
 
-		$this->index($params);
+		return $this->index($params);
 	}
 
 	//--------------------------------------------------------------------
 
-
 	/**
+	 * Default command.
+	 *
 	 * @param array $params
 	 *
 	 * @return mixed
+	 * @throws \ReflectionException
 	 */
 	public function index(array $params)
 	{
@@ -101,9 +122,9 @@ class CommandRunner extends Controller
 	 */
 	protected function runCommand(string $command, array $params)
 	{
-		if ( ! isset($this->commands[$command]))
+		if (! isset($this->commands[$command]))
 		{
-			CLI::error('Command \'' . $command . '\' not found');
+			CLI::error(lang('CLI.commandNotFound', [$command]));
 			CLI::newLine();
 			return;
 		}
@@ -111,7 +132,7 @@ class CommandRunner extends Controller
 		// The file would have already been loaded during the
 		// createCommandList function...
 		$className = $this->commands[$command]['class'];
-		$class = new $className($this->logger, $this);
+		$class     = new $className($this->logger, $this);
 
 		return $class->run($params);
 	}
@@ -122,25 +143,35 @@ class CommandRunner extends Controller
 	 * Scans all Commands directories and prepares a list
 	 * of each command with it's group and file.
 	 *
-	 * @return null|void
+	 * @throws \ReflectionException
 	 */
 	protected function createCommandList()
 	{
-		$files = service('locator')->listFiles("Commands/");
+		$files = Services::locator()->listFiles('Commands/');
 
 		// If no matching command files were found, bail
 		if (empty($files))
 		{
+			// This should never happen in unit testing.
+			// if it does, we have far bigger problems!
+			// @codeCoverageIgnoreStart
 			return;
+			// @codeCoverageIgnoreEnd
 		}
 
 		// Loop over each file checking to see if a command with that
 		// alias exists in the class. If so, return it. Otherwise, try the next.
 		foreach ($files as $file)
 		{
-			$className = service('locator')->findQualifiedNameFromPath($file);
-
+			$className = Services::locator()->findQualifiedNameFromPath($file);
 			if (empty($className) || ! class_exists($className))
+			{
+				continue;
+			}
+
+			$class = new \ReflectionClass($className);
+
+			if (! $class->isInstantiable() || ! $class->isSubclassOf(BaseCommand::class))
 			{
 				continue;
 			}
@@ -151,10 +182,10 @@ class CommandRunner extends Controller
 			if ($class->group !== null)
 			{
 				$this->commands[$class->name] = [
-					'class'			 => $className,
-					'file'			 => $file,
-					'group'			 => $class->group,
-					'description'	 => $class->description
+					'class'       => $className,
+					'file'        => $file,
+					'group'       => $class->group,
+					'description' => $class->description,
 				];
 			}
 
@@ -172,7 +203,7 @@ class CommandRunner extends Controller
 	 *
 	 * @return array
 	 */
-	public function getCommands()
+	public function getCommands(): array
 	{
 		return $this->commands;
 	}

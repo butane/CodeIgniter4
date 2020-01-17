@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Cache;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +28,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Cache;
+
+use CodeIgniter\Cache\Exceptions\CacheException;
+use CodeIgniter\Exceptions\CriticalError;
 
 /**
  * Class Cache
@@ -45,11 +51,10 @@
  */
 class CacheFactory
 {
-
 	/**
 	 * Attempts to create the desired cache handler, based upon the
 	 *
-	 * @param        $config
+	 * @param $config
 	 * @param string $handler
 	 * @param string $backup
 	 *
@@ -57,32 +62,32 @@ class CacheFactory
 	 */
 	public static function getHandler($config, string $handler = null, string $backup = null)
 	{
-		if ( ! isset($config->validHandlers) || ! is_array($config->validHandlers))
+		if (! isset($config->validHandlers) || ! is_array($config->validHandlers))
 		{
-			throw new \InvalidArgumentException(lang('Cache.cacheInvalidHandlers'));
+			throw CacheException::forInvalidHandlers();
 		}
 
-		if ( ! isset($config->handler) || ! isset($config->backupHandler))
+		if (! isset($config->handler) || ! isset($config->backupHandler))
 		{
-			throw new \InvalidArgumentException(lang('Cache.cacheNoBackup'));
+			throw CacheException::forNoBackup();
 		}
 
 		$handler = ! empty($handler) ? $handler : $config->handler;
-		$backup = ! empty($backup) ? $backup : $config->backupHandler;
+		$backup  = ! empty($backup) ? $backup : $config->backupHandler;
 
-		if ( ! array_key_exists($handler, $config->validHandlers) || ! array_key_exists($backup, $config->validHandlers))
+		if (! array_key_exists($handler, $config->validHandlers) || ! array_key_exists($backup, $config->validHandlers))
 		{
-			throw new \InvalidArgumentException(lang('Cache.cacheHandlerNotFound'));
+			throw CacheException::forHandlerNotFound();
 		}
 
 		// Get an instance of our handler.
 		$adapter = new $config->validHandlers[$handler]($config);
 
-		if ( ! $adapter->isSupported())
+		if (! $adapter->isSupported())
 		{
 			$adapter = new $config->validHandlers[$backup]($config);
 
-			if ( ! $adapter->isSupported())
+			if (! $adapter->isSupported())
 			{
 				// Log stuff here, don't throw exception. No need to raise a fuss.
 				// Fall back to the dummy adapter.
@@ -90,7 +95,20 @@ class CacheFactory
 			}
 		}
 
-		$adapter->initialize();
+		// If $adapter->initialization throws a CriticalError exception, we will attempt to
+		// use the $backup handler, if that also fails, we resort to the dummy handler.
+		try
+		{
+			$adapter->initialize();
+		}
+		catch (CriticalError $e)
+		{
+			// log the fact that an exception occurred as well what handler we are resorting to
+			log_message('critical', $e->getMessage() . ' Resorting to using ' . $backup . ' handler.');
+
+			// get the next best cache handler (or dummy if the $backup also fails)
+			$adapter = self::getHandler($config, $backup, 'dummy');
+		}
 
 		return $adapter;
 	}

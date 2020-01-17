@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Pager;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +28,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Pager;
 
 /**
  * Class PagerRenderer
@@ -48,23 +51,65 @@
 class PagerRenderer
 {
 
+	/**
+	 * First page number.
+	 *
+	 * @var integer
+	 */
 	protected $first;
+	/**
+	 * Last page number.
+	 *
+	 * @var integer
+	 */
 	protected $last;
+	/**
+	 * Current page number.
+	 *
+	 * @var integer
+	 */
 	protected $current;
+	/**
+	 * Total number of pages? unused?
+	 *
+	 * @var integer
+	 */
 	protected $total;
+		/**
+		 * Page count?
+		 *
+		 * @var integer
+		 */
 	protected $pageCount;
+	/**
+	 * URI base for pagination links
+	 *
+	 * @var integer
+	 */
 	protected $uri;
+	/**
+	 * Segment number used for pagination.
+	 *
+	 * @var integer
+	 */
+	protected $segment;
 
 	//--------------------------------------------------------------------
 
+	/**
+	 * Constructor.
+	 *
+	 * @param array $details
+	 */
 	public function __construct(array $details)
 	{
-		$this->first = 1;
-		$this->last = $details['pageCount'];
-		$this->current = $details['currentPage'];
-		$this->total = $details['total'];
-		$this->uri = $details['uri'];
+		$this->first     = 1;
+		$this->last      = $details['pageCount'];
+		$this->current   = $details['currentPage'];
+		$this->total     = $details['total'];
+		$this->uri       = $details['uri'];
 		$this->pageCount = $details['pageCount'];
+		$this->segment   = $details['segment'] ?? 0;
 	}
 
 	//--------------------------------------------------------------------
@@ -74,11 +119,11 @@ class PagerRenderer
 	 * side of the current page. Adjusts the first and last counts
 	 * to reflect it.
 	 *
-	 * @param int $count
+	 * @param integer|null $count
 	 *
 	 * @return PagerRenderer
 	 */
-	public function setSurroundCount(int $count)
+	public function setSurroundCount(int $count = null)
 	{
 		$this->updatePages($count);
 
@@ -90,7 +135,7 @@ class PagerRenderer
 	/**
 	 * Checks to see if there is a "previous" page before our "first" page.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function hasPrevious(): bool
 	{
@@ -110,14 +155,21 @@ class PagerRenderer
 	 */
 	public function getPrevious()
 	{
-		if ( ! $this->hasPrevious())
+		if (! $this->hasPrevious())
 		{
 			return null;
 		}
 
 		$uri = clone $this->uri;
 
-		$uri->addQuery('page', $this->first - 1);
+		if ($this->segment === 0)
+		{
+			$uri->addQuery('page', $this->first - 1);
+		}
+		else
+		{
+			$uri->setSegment($this->segment, $this->first - 1);
+		}
 
 		return (string) $uri;
 	}
@@ -127,7 +179,7 @@ class PagerRenderer
 	/**
 	 * Checks to see if there is a "next" page after our "last" page.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function hasNext(): bool
 	{
@@ -147,14 +199,21 @@ class PagerRenderer
 	 */
 	public function getNext()
 	{
-		if ( ! $this->hasNext())
+		if (! $this->hasNext())
 		{
 			return null;
 		}
 
 		$uri = clone $this->uri;
 
-		$uri->addQuery('page', $this->last + 1);
+		if ($this->segment === 0)
+		{
+			$uri->addQuery('page', $this->last + 1);
+		}
+		else
+		{
+			$uri->setSegment($this->segment, $this->last + 1);
+		}
 
 		return (string) $uri;
 	}
@@ -170,7 +229,14 @@ class PagerRenderer
 	{
 		$uri = clone $this->uri;
 
-		$uri->addQuery('page', 1);
+		if ($this->segment === 0)
+		{
+			$uri->addQuery('page', 1);
+		}
+		else
+		{
+			$uri->setSegment($this->segment, 1);
+		}
 
 		return (string) $uri;
 	}
@@ -186,7 +252,37 @@ class PagerRenderer
 	{
 		$uri = clone $this->uri;
 
-		$uri->addQuery('page', $this->pageCount);
+		if ($this->segment === 0)
+		{
+			$uri->addQuery('page', $this->pageCount);
+		}
+		else
+		{
+			$uri->setSegment($this->segment, $this->pageCount);
+		}
+
+		return (string) $uri;
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * Returns the URI of the current page.
+	 *
+	 * @return string
+	 */
+	public function getCurrent(): string
+	{
+		$uri = clone $this->uri;
+
+		if ($this->segment === 0)
+		{
+			$uri->addQuery('page', $this->current);
+		}
+		else
+		{
+			$uri->setSegment($this->segment, $this->current);
+		}
 
 		return (string) $uri;
 	}
@@ -207,12 +303,12 @@ class PagerRenderer
 
 		$uri = clone $this->uri;
 
-		for ($i = $this->first; $i <= $this->last; $i ++ )
+		for ($i = $this->first; $i <= $this->last; $i ++)
 		{
 			$links[] = [
-				'uri'	 => (string) $uri->addQuery('page', $i),
-				'title'	 => (int) $i,
-				'active' => ($i == $this->current)
+				'uri'    => (string) ($this->segment === 0 ? $uri->addQuery('page', $i) : $uri->setSegment($this->segment, $i)),
+				'title'  => (int) $i,
+				'active' => ($i === $this->current),
 			];
 		}
 
@@ -226,7 +322,7 @@ class PagerRenderer
 	 * which is the number of links surrounding the active page
 	 * to show.
 	 *
-	 * @param int|null $count
+	 * @param integer|null $count The new "surroundCount"
 	 */
 	protected function updatePages(int $count = null)
 	{
@@ -236,7 +332,7 @@ class PagerRenderer
 		}
 
 		$this->first = $this->current - $count > 0 ? (int) ($this->current - $count) : 1;
-		$this->last = $this->current + $count <= $this->pageCount ? (int) ($this->current + $count) : (int) $this->pageCount;
+		$this->last  = $this->current + $count <= $this->pageCount ? (int) ($this->current + $count) : (int) $this->pageCount;
 	}
 
 	//--------------------------------------------------------------------

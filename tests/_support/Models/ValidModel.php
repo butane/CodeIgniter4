@@ -10,18 +10,25 @@ class ValidModel extends Model
 
 	protected $useSoftDeletes = false;
 
-	protected $dateFormat = 'integer';
+	protected $dateFormat = 'int';
 
-    protected $allowedFields = ['name', 'description'];
+	protected $allowedFields = [
+		'name',
+		'description',
+	];
 
-    protected $validationRules = [
-        'name' => 'required|min_length[3]'
-    ];
+	protected $validationRules = [
+		'name'  => [
+			'required',
+			'min_length[3]',
+		],
+		'token' => 'permit_empty|in_list[{id}]',
+	];
 
-    protected $validationMessages = [
-        'name' => [
-            'required' => 'You forgot to name the baby.',
-            'min_length' => 'Too short, man!'
-        ]
-    ];
+	protected $validationMessages = [
+		'name' => [
+			'required'   => 'You forgot to name the baby.',
+			'min_length' => 'Too short, man!',
+		],
+	];
 }

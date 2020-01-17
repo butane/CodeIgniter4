@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Validation;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,18 +28,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Validation;
+
 use Config\Database;
 
 /**
- * Rules.
+ * Validation Rules.
  *
  * @package CodeIgniter\Validation
  */
@@ -51,9 +55,9 @@ class Rules
 	 *
 	 * @param string $str
 	 * @param string $field
-	 * @param array  $data Other field/value pairs
+	 * @param array  $data  Other field/value pairs
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function differs(string $str = null, string $field, array $data): bool
 	{
@@ -63,22 +67,42 @@ class Rules
 	//--------------------------------------------------------------------
 
 	/**
+	 * Equals the static value provided.
+	 *
+	 * @param string $str
+	 * @param string $val
+	 *
+	 * @return boolean
+	 */
+	public function equals(string $str = null, string $val): bool
+	{
+		return $str === $val;
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
 	 * Returns true if $str is $val characters long.
+	 * $val = "5" (one) | "5,8,12" (multiple values)
 	 *
 	 * @param string $str
 	 * @param string $val
 	 * @param array  $data
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function exact_length(string $str = null, string $val, array $data): bool
 	{
-		if ( ! is_numeric($val))
+		$val = explode(',', $val);
+		foreach ($val as $tmp)
 		{
-			return false;
+			if (is_numeric($tmp) && (int)$tmp === mb_strlen($str))
+			{
+				return true;
+			}
 		}
 
-		return ((int) $val == mb_strlen($str));
+		return false;
 	}
 
 	//--------------------------------------------------------------------
@@ -86,11 +110,11 @@ class Rules
 	/**
 	 * Greater than
 	 *
-	 * @param    string $str
-	 * @param    string    $min
-	 * @param    array  $data
+	 * @param string $str
+	 * @param string $min
+	 * @param array  $data
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function greater_than(string $str = null, string $min, array $data): bool
 	{
@@ -102,11 +126,11 @@ class Rules
 	/**
 	 * Equal to or Greater than
 	 *
-	 * @param    string $str
-	 * @param    string $min
-	 * @param    array  $data
+	 * @param string $str
+	 * @param string $min
+	 * @param array  $data
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function greater_than_equal_to(string $str = null, string $min, array $data): bool
 	{
@@ -116,20 +140,61 @@ class Rules
 	//--------------------------------------------------------------------
 
 	/**
+	 * Checks the database to see if the given value exist.
+	 * Can ignore records by field/value to filter (currently
+	 * accept only one filter).
+	 *
+	 * Example:
+	 *    is_not_unique[table.field,where_field,where_value]
+	 *    is_not_unique[menu.id,active,1]
+	 *
+	 * @param string $str
+	 * @param string $field
+	 * @param array  $data
+	 *
+	 * @return boolean
+	 */
+	public function is_not_unique(string $str = null, string $field, array $data): bool
+	{
+		// Grab any data for exclusion of a single row.
+		list($field, $where_field, $where_value) = array_pad(explode(',', $field), 3, null);
+
+		// Break the table and field apart
+		sscanf($field, '%[^.].%[^.]', $table, $field);
+
+		$db = Database::connect($data['DBGroup'] ?? null);
+
+		$row = $db->table($table)
+				  ->select('1')
+				  ->where($field, $str)
+				  ->limit(1);
+
+		if (! empty($where_field) && ! empty($where_value))
+		{
+			$row = $row->where($where_field, $where_value);
+		}
+
+		return (bool) ($row->get()
+						->getRow() !== null);
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
 	 * Value should be within an array of values
 	 *
-	 * @param	string $value
-	 * @param	string $list
-	 * @param	array $data
-	 * @return	bool
+	 * @param  string $value
+	 * @param  string $list
+	 * @param  array  $data
+	 * @return boolean
 	 */
 	public function in_list(string $value = null, string $list, array $data): bool
 	{
 		$list = explode(',', $list);
-		$list = array_map(function($value) {
+		$list = array_map(function ($value) {
 			return trim($value);
 		}, $list);
-		return in_array($value, $list, TRUE);
+		return in_array($value, $list, true);
 	}
 
 	//--------------------------------------------------------------------
@@ -147,7 +212,7 @@ class Rules
 	 * @param string $field
 	 * @param array  $data
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function is_unique(string $str = null, string $field, array $data): bool
 	{
@@ -157,11 +222,14 @@ class Rules
 		// Break the table and field apart
 		sscanf($field, '%[^.].%[^.]', $table, $field);
 
-		$db = Database::connect();
-		$row = $db->table($table)
-				->where($field, $str);
+		$db = Database::connect($data['DBGroup'] ?? null);
 
-		if ( ! empty($ignoreField) && ! empty($ignoreValue))
+		$row = $db->table($table)
+				  ->select('1')
+				  ->where($field, $str)
+				  ->limit(1);
+
+		if (! empty($ignoreField) && ! empty($ignoreValue))
 		{
 			$row = $row->where("{$ignoreField} !=", $ignoreValue);
 		}
@@ -175,10 +243,10 @@ class Rules
 	/**
 	 * Less than
 	 *
-	 * @param    string $str
-	 * @param    string $max
+	 * @param string $str
+	 * @param string $max
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function less_than(string $str = null, string $max): bool
 	{
@@ -190,10 +258,10 @@ class Rules
 	/**
 	 * Equal to or Less than
 	 *
-	 * @param    string $str
-	 * @param    string $max
+	 * @param string $str
+	 * @param string $max
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
 	public function less_than_equal_to(string $str = null, string $max): bool
 	{
@@ -207,9 +275,9 @@ class Rules
 	 *
 	 * @param string $str
 	 * @param string $field
-	 * @param array  $data Other field/value pairs
+	 * @param array  $data  Other field/value pairs
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function matches(string $str = null, string $field, array $data): bool
 	{
@@ -225,15 +293,10 @@ class Rules
 	 * @param string $val
 	 * @param array  $data
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function max_length(string $str = null, string $val, array $data): bool
 	{
-		if ( ! is_numeric($val))
-		{
-			return false;
-		}
-
 		return ($val >= mb_strlen($str));
 	}
 
@@ -246,16 +309,26 @@ class Rules
 	 * @param string $val
 	 * @param array  $data
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function min_length(string $str = null, string $val, array $data): bool
 	{
-		if ( ! is_numeric($val))
-		{
-			return false;
-		}
-
 		return ($val <= mb_strlen($str));
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * Does not equal the static value provided.
+	 *
+	 * @param string $str
+	 * @param string $val
+	 *
+	 * @return boolean
+	 */
+	public function not_equals(string $str = null, string $val): bool
+	{
+		return $str !== $val;
 	}
 
 	//--------------------------------------------------------------------
@@ -263,9 +336,9 @@ class Rules
 	/**
 	 * Required
 	 *
-	 * @param    mixed  $str    Value
+	 * @param mixed $str Value
 	 *
-	 * @return    bool          True if valid, false if not
+	 * @return boolean          True if valid, false if not
 	 */
 	public function required($str = null): bool
 	{
@@ -274,24 +347,24 @@ class Rules
 			return true;
 		}
 
-		return is_array($str) ?  ! empty($str) : (trim($str) !== '');
+		return is_array($str) ? ! empty($str) : (trim($str) !== '');
 	}
 
 	//--------------------------------------------------------------------
 
 	/**
-	 * The field is required when any of the other fields are present
+	 * The field is required when any of the other required fields are present
 	 * in the data.
 	 *
 	 * Example (field is required when the password field is present):
 	 *
-	 * 	required_with[password]
+	 *     required_with[password]
 	 *
-	 * @param        $str
-	 * @param string $fields    List of fields that we should check if present
-	 * @param array  $data      Complete list of fields from the form
+	 * @param $str
+	 * @param string $fields List of fields that we should check if present
+	 * @param array  $data   Complete list of fields from the form
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function required_with($str = null, string $fields, array $data): bool
 	{
@@ -300,9 +373,9 @@ class Rules
 		// If the field is present we can safely assume that
 		// the field is here, no matter whether the corresponding
 		// search field is present or not.
-		$present = $this->required($data[$str] ?? null);
+		$present = $this->required($str ?? '');
 
-		if ($present === true)
+		if ($present)
 		{
 			return true;
 		}
@@ -322,7 +395,7 @@ class Rules
 
 		// Remove any keys with empty values since, that means they
 		// weren't truly there, as far as this is concerned.
-		$requiredFields = array_filter($requiredFields, function($item) use($data) {
+		$requiredFields = array_filter($requiredFields, function ($item) use ($data) {
 			return ! empty($data[$item]);
 		});
 
@@ -332,18 +405,18 @@ class Rules
 	//--------------------------------------------------------------------
 
 	/**
-	 * The field is required when all of the other fields are not present
-	 * in the data.
+	 * The field is required when all of the other fields are present
+	 * in the data but not required.
 	 *
 	 * Example (field is required when the id or email field is missing):
 	 *
-	 * 	required_without[id,email]
+	 *     required_without[id,email]
 	 *
-	 * @param        $str
+	 * @param $str
 	 * @param string $fields
 	 * @param array  $data
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function required_without($str = null, string $fields, array $data): bool
 	{
@@ -352,9 +425,9 @@ class Rules
 		// If the field is present we can safely assume that
 		// the field is here, no matter whether the corresponding
 		// search field is present or not.
-		$present = $this->required($data[$str] ?? null);
+		$present = $this->required($str ?? '');
 
-		if ($present === true)
+		if ($present)
 		{
 			return true;
 		}
@@ -363,7 +436,7 @@ class Rules
 		// any of the fields are not present in $data
 		foreach ($fields as $field)
 		{
-			if ( ! array_key_exists($field, $data))
+			if (! array_key_exists($field, $data))
 			{
 				return false;
 			}

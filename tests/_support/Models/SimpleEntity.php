@@ -12,9 +12,5 @@ use CodeIgniter\Entity;
  */
 class SimpleEntity extends Entity
 {
-    protected $id;
-    protected $name;
-    protected $description;
-    protected $created_at;
 
 }

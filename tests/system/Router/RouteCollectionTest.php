@@ -1,7 +1,8 @@
-<?php namespace CodeIgniter\Router;
+<?php
+namespace CodeIgniter\Router;
 
-use CodeIgniter\Autoloader\FileLocator;
-use CodeIgniter\Autoloader\MockFileLocator;
+use CodeIgniter\Config\Services;
+use CodeIgniter\Router\Exceptions\RouterException;
 
 /**
  * @backupGlobals enabled
@@ -9,33 +10,31 @@ use CodeIgniter\Autoloader\MockFileLocator;
 class RouteCollectionTest extends \CIUnitTestCase
 {
 
-	public function setUp()
+	public function tearDown(): void
 	{
 	}
 
 	//--------------------------------------------------------------------
 
-	public function tearDown()
-	{
-	}
-
-	//--------------------------------------------------------------------
-
-	protected function getCollector(array $config=[], array $files=[])
+	protected function getCollector(array $config = [], array $files = [], $moduleConfig = null)
 	{
 		$defaults = [
-			'Config'        => APPPATH.'Config',
-			'App'           => APPPATH,
+			'Config' => APPPATH . 'Config',
+			'App'    => APPPATH,
 		];
 		$config   = array_merge($config, $defaults);
 
-		$autoload = new \Config\Autoload();
-		$autoload->psr4 = $config;
+		Services::autoloader()->addNamespace($config);
 
-		$loader = new MockFileLocator($autoload);
-		$loader->setFiles($files);
+		$loader = Services::locator();
 
-		return new RouteCollection($loader);
+		if ($moduleConfig === null)
+		{
+			$moduleConfig          = new \Config\Modules();
+			$moduleConfig->enabled = false;
+		}
+
+		return (new RouteCollection($loader, $moduleConfig))->setHTTPVerb('get');
 	}
 
 	public function testBasicAdd()
@@ -91,7 +90,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testAddWorksWithCurrentHTTPMethods()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
+		Services::request()->setMethod('get');
 
 		$routes = $this->getCollector();
 
@@ -108,26 +107,26 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	//--------------------------------------------------------------------
 
-    public function testAddWithLeadingSlash()
-    {
-        $routes = $this->getCollector();
+	public function testAddWithLeadingSlash()
+	{
+		$routes = $this->getCollector();
 
-        $routes->add('/home', 'controller');
+		$routes->add('/home', 'controller');
 
-        $expects = [
-            'home' => '\controller',
-        ];
+		$expects = [
+			'home' => '\controller',
+		];
 
-        $routes = $routes->getRoutes();
+		$routes = $routes->getRoutes();
 
-        $this->assertEquals($expects, $routes);
-    }
+		$this->assertEquals($expects, $routes);
+	}
 
-    //--------------------------------------------------------------------
+	//--------------------------------------------------------------------
 
 	public function testMatchIgnoresInvalidHTTPMethods()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
+		Services::request()->setMethod('get');
 
 		$routes = $this->getCollector();
 
@@ -142,7 +141,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testAddWorksWithArrayOFHTTPMethods()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'POST';
+		Services::request()->setMethod('post');
 
 		$routes = $this->getCollector();
 
@@ -237,7 +236,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$routes = $this->getCollector();
 		$routes->setTranslateURIDashes(true);
 
-		$this->assertEquals(true, $routes->shouldTranslateURIDashes());
+		$this->assertTrue($routes->shouldTranslateURIDashes());
 	}
 
 	//--------------------------------------------------------------------
@@ -247,7 +246,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$routes = $this->getCollector();
 		$routes->setAutoRoute(true);
 
-		$this->assertEquals(true, $routes->shouldAutoRoute());
+		$this->assertTrue($routes->shouldAutoRoute());
 	}
 
 	//--------------------------------------------------------------------
@@ -256,13 +255,14 @@ class RouteCollectionTest extends \CIUnitTestCase
 	{
 		$routes = $this->getCollector();
 
-		$routes->group('admin', function($routes)
-		{
-			$routes->add('users/list', '\Users::list');
-		});
+		$routes->group(
+				'admin', function ($routes) {
+					$routes->add('users/list', '\Users::list');
+				}
+		);
 
 		$expected = [
-			'admin/users/list' => '\Users::list'
+			'admin/users/list' => '\Users::list',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -274,13 +274,14 @@ class RouteCollectionTest extends \CIUnitTestCase
 	{
 		$routes = $this->getCollector();
 
-		$routes->group('<script>admin', function($routes)
-		{
-			$routes->add('users/list', '\Users::list');
-		});
+		$routes->group(
+				'<script>admin', function ($routes) {
+					$routes->add('users/list', '\Users::list');
+				}
+		);
 
 		$expected = [
-				'admin/users/list' => '\Users::list'
+			'admin/users/list' => '\Users::list',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -292,13 +293,14 @@ class RouteCollectionTest extends \CIUnitTestCase
 	{
 		$routes = $this->getCollector();
 
-		$routes->group('admin', ['namespace' => 'Admin'], function($routes)
-		{
-			$routes->add('users/list', 'Users::list');
-		});
+		$routes->group(
+				'admin', ['namespace' => 'Admin'], function ($routes) {
+					$routes->add('users/list', 'Users::list');
+				}
+		);
 
 		$expected = [
-			'admin/users/list' => '\Admin\Users::list'
+			'admin/users/list' => '\Admin\Users::list',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -316,7 +318,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$routes->add('foo', 'bar', ['hostname' => 'foobar.com']);
 
 		$expected = [
-			'from' => '\to'
+			'from' => '\to',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -324,60 +326,149 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	//--------------------------------------------------------------------
 
-
-
-	public function testResourcesScaffoldsCorrectly()
+	public function testResourceScaffoldsCorrectly()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('get');
 
 		$routes->resource('photos');
 
 		$expected = [
-			'photos' => '\Photos::index',
-			'photos/new' => '\Photos::new',
+			'photos'           => '\Photos::index',
+			'photos/new'       => '\Photos::new',
 			'photos/(.*)/edit' => '\Photos::edit/$1',
-			'photos/(.*)' => '\Photos::show/$1'
+			'photos/(.*)'      => '\Photos::show/$1',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
 
-		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('post');
 		$routes->resource('photos');
 
 		$expected = [
-				'photos' => '\Photos::create'
+			'photos' => '\Photos::create',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
 
-		$_SERVER['REQUEST_METHOD'] = 'PUT';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('put');
 		$routes->resource('photos');
 
 		$expected = [
-				'photos/(.*)' => '\Photos::update/$1'
+			'photos/(.*)' => '\Photos::update/$1',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
 
-		$_SERVER['REQUEST_METHOD'] = 'PATCH';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('patch');
 		$routes->resource('photos');
 
 		$expected = [
-				'photos/(.*)' => '\Photos::update/$1'
+			'photos/(.*)' => '\Photos::update/$1',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
 
-		$_SERVER['REQUEST_METHOD'] = 'DELETE';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('delete');
 		$routes->resource('photos');
 
 		$expected = [
-				'photos/(.*)' => '\Photos::delete/$1'
+			'photos/(.*)' => '\Photos::delete/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+	}
+
+	// Similar to the above, but with a more typical endpoint
+
+	public function testResourceAPIScaffoldsCorrectly()
+	{
+		$routes = $this->getCollector();
+		$routes->setHTTPVerb('get');
+
+		$routes->resource('api/photos', ['controller' => 'Photos']);
+
+		$expected = [
+			'api/photos'           => '\Photos::index',
+			'api/photos/new'       => '\Photos::new',
+			'api/photos/(.*)/edit' => '\Photos::edit/$1',
+			'api/photos/(.*)'      => '\Photos::show/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+
+		$routes = $this->getCollector();
+		$routes->setHTTPVerb('post');
+		$routes->resource('api/photos', ['controller' => 'Photos']);
+
+		$expected = [
+			'api/photos' => '\Photos::create',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+
+		$routes = $this->getCollector();
+		$routes->setHTTPVerb('put');
+		$routes->resource('api/photos', ['controller' => 'Photos']);
+
+		$expected = [
+			'api/photos/(.*)' => '\Photos::update/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+
+		$routes = $this->getCollector();
+		$routes->setHTTPVerb('patch');
+		$routes->resource('api/photos', ['controller' => 'Photos']);
+
+		$expected = [
+			'api/photos/(.*)' => '\Photos::update/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+
+		$routes = $this->getCollector();
+		$routes->setHTTPVerb('delete');
+		$routes->resource('api/photos', ['controller' => 'Photos']);
+
+		$expected = [
+			'api/photos/(.*)' => '\Photos::delete/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+	}
+
+	public function testPresenterScaffoldsCorrectly()
+	{
+		$routes = $this->getCollector();
+		$routes->setHTTPVerb('get');
+
+		$routes->presenter('photos');
+
+		$expected = [
+			'photos'             => '\Photos::index',
+			'photos/show/(.*)'   => '\Photos::show/$1',
+			'photos/new'         => '\Photos::new',
+			'photos/edit/(.*)'   => '\Photos::edit/$1',
+			'photos/remove/(.*)' => '\Photos::remove/$1',
+			'photos/(.*)'        => '\Photos::show/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+
+		$routes = $this->getCollector();
+		$routes->setHTTPVerb('post');
+		$routes->presenter('photos');
+
+		$expected = [
+			'photos/create'      => '\Photos::create',
+			'photos/update/(.*)' => '\Photos::update/$1',
+			'photos/delete/(.*)' => '\Photos::delete/$1',
+			'photos'             => '\Photos::create',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -387,16 +478,16 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testResourcesWithCustomController()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
+		Services::request()->setMethod('get');
 		$routes = $this->getCollector();
 
 		$routes->resource('photos', ['controller' => '<script>gallery']);
 
 		$expected = [
-				'photos' => '\Gallery::index',
-				'photos/new' => '\Gallery::new',
-				'photos/(.*)/edit' => '\Gallery::edit/$1',
-				'photos/(.*)' => '\Gallery::show/$1'
+			'photos'           => '\Gallery::index',
+			'photos/new'       => '\Gallery::new',
+			'photos/(.*)/edit' => '\Gallery::edit/$1',
+			'photos/(.*)'      => '\Gallery::show/$1',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -406,16 +497,52 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testResourcesWithCustomPlaceholder()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
+		Services::request()->setMethod('get');
 		$routes = $this->getCollector();
 
 		$routes->resource('photos', ['placeholder' => ':num']);
 
 		$expected = [
-				'photos' => '\Photos::index',
-				'photos/new' => '\Photos::new',
-				'photos/([0-9]+)/edit' => '\Photos::edit/$1',
-				'photos/([0-9]+)' => '\Photos::show/$1'
+			'photos'               => '\Photos::index',
+			'photos/new'           => '\Photos::new',
+			'photos/([0-9]+)/edit' => '\Photos::edit/$1',
+			'photos/([0-9]+)'      => '\Photos::show/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+	}
+
+	public function testResourcesWithDefaultPlaceholder()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$routes->setDefaultConstraint('num');
+		$routes->resource('photos');
+
+		$expected = [
+			'photos'               => '\Photos::index',
+			'photos/new'           => '\Photos::new',
+			'photos/([0-9]+)/edit' => '\Photos::edit/$1',
+			'photos/([0-9]+)'      => '\Photos::show/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+	}
+
+	public function testResourcesWithBogusDefaultPlaceholder()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$routes->setDefaultConstraint(':num');
+		$routes->resource('photos');
+
+		$expected = [
+			'photos'           => '\Photos::index',
+			'photos/new'       => '\Photos::new',
+			'photos/(.*)/edit' => '\Photos::edit/$1',
+			'photos/(.*)'      => '\Photos::show/$1',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -425,13 +552,48 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testResourcesWithOnly()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
+		Services::request()->setMethod('get');
 		$routes = $this->getCollector();
 
 		$routes->resource('photos', ['only' => 'index']);
 
 		$expected = [
-			'photos' => '\Photos::index'
+			'photos' => '\Photos::index',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+	}
+
+	//--------------------------------------------------------------------
+
+	public function testResourcesWithExcept()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$routes->resource('photos', ['except' => 'edit,new']);
+
+		$expected = [
+			'photos'      => '\Photos::index',
+			'photos/(.*)' => '\Photos::show/$1',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+	}
+
+	//--------------------------------------------------------------------
+
+	public function testResourcesWithWebsafe()
+	{
+		$routes = $this->getCollector();
+		$routes->setHTTPVerb('post');
+
+		$routes->resource('photos', ['websafe' => true]);
+
+		$expected = [
+			'photos'             => '\Photos::create',
+			'photos/(.*)'        => '\Photos::update/$1',
+			'photos/(.*)/delete' => '\Photos::delete/$1',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -441,7 +603,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testMatchSupportsMultipleMethods()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
+		Services::request()->setMethod('get');
 		$routes = $this->getCollector();
 
 		$expected = ['here' => '\there'];
@@ -449,7 +611,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$routes->match(['get', 'post'], 'here', 'there');
 		$this->assertEquals($expected, $routes->getRoutes());
 
-		$_SERVER['REQUEST_METHOD'] = 'POST';
+		Services::request()->setMethod('post');
 		$routes = $this->getCollector();
 		$routes->match(['get', 'post'], 'here', 'there');
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -459,7 +621,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testGet()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
+		Services::request()->setMethod('get');
 		$routes = $this->getCollector();
 
 		$expected = ['here' => '\there'];
@@ -472,8 +634,8 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testPost()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('post');
 
 		$expected = ['here' => '\there'];
 
@@ -485,8 +647,8 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testGetDoesntAllowOtherMethods()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'GET';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('get');
 
 		$expected = ['here' => '\there'];
 
@@ -499,8 +661,8 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testPut()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'PUT';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('put');
 
 		$expected = ['here' => '\there'];
 
@@ -512,8 +674,8 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testDelete()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'DELETE';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('delete');
 
 		$expected = ['here' => '\there'];
 
@@ -525,8 +687,8 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testHead()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'HEAD';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('head');
 
 		$expected = ['here' => '\there'];
 
@@ -538,8 +700,8 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testPatch()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'PATCH';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('patch');
 
 		$expected = ['here' => '\there'];
 
@@ -551,8 +713,8 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	public function testOptions()
 	{
-		$_SERVER['REQUEST_METHOD'] = 'OPTIONS';
 		$routes = $this->getCollector();
+		$routes->setHTTPVerb('options');
 
 		$expected = ['here' => '\there'];
 
@@ -569,7 +731,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$expected = ['here' => '\there'];
 
 		$routes->cli('here', 'there');
-		$this->assertEquals($expected, $routes->getRoutes());
+		$this->assertEquals($expected, $routes->getRoutes('cli'));
 	}
 
 	//--------------------------------------------------------------------
@@ -578,20 +740,22 @@ class RouteCollectionTest extends \CIUnitTestCase
 	{
 		// ENVIRONMENT should be 'testing'
 
-		$_SERVER['REQUEST_METHOD'] = 'GET';
+		Services::request()->setMethod('get');
 		$routes = $this->getCollector();
 
 		$expected = ['here' => '\there'];
 
-		$routes->environment('testing', function($routes)
-		{
-			$routes->get('here', 'there');
-		});
+		$routes->environment(
+				'testing', function ($routes) {
+					$routes->get('here', 'there');
+				}
+		);
 
-		$routes->environment('badenvironment', function($routes)
-		{
-			$routes->get('from', 'to');
-		});
+		$routes->environment(
+				'badenvironment', function ($routes) {
+					$routes->get('from', 'to');
+				}
+		);
 
 		$this->assertEquals($expected, $routes->getRoutes());
 	}
@@ -639,7 +803,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 		$routes->add('path/(:any)/to/(:num)', 'myController::goto/$1/$2');
 
-		$this->expectException('LogicException');
+		$this->expectException(RouterException::class);
 		$match = $routes->reverseRoute('myController::goto', 13, 'string');
 	}
 
@@ -670,15 +834,21 @@ class RouteCollectionTest extends \CIUnitTestCase
 	//--------------------------------------------------------------------
 
 	/**
-	 * @see https://github.com/bcit-ci/CodeIgniter4/issues/642
+	 * @see https://github.com/codeigniter4/CodeIgniter4/issues/642
 	 */
 	public function testNamedRoutesWithSameURIDifferentMethods()
 	{
 		$routes = $this->getCollector();
-		
+
 		$routes->get('user/insert', 'myController::goto/$1/$2', ['as' => 'namedRoute1']);
-		$routes->post('user/insert', function() {}, ['as' => 'namedRoute2']);
-		$routes->put('user/insert', function() {}, ['as' => 'namedRoute3']);
+		$routes->post(
+				'user/insert', function () {
+				}, ['as' => 'namedRoute2']
+		);
+		$routes->put(
+				'user/insert', function () {
+				}, ['as' => 'namedRoute3']
+		);
 
 		$match1 = $routes->reverseRoute('namedRoute1');
 		$match2 = $routes->reverseRoute('namedRoute2');
@@ -691,6 +861,17 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	//--------------------------------------------------------------------
 
+	public function testReverseRouteMatching()
+	{
+		$routes = $this->getCollector();
+
+		$routes->get('test/(:segment)/(:segment)', 'TestController::test/$1/$2', ['as' => 'testRouter']);
+
+		$match = $routes->reverseRoute('testRouter', 1, 2);
+
+		$this->assertEquals('/test/1/2', $match);
+	}
+
 	public function testAddRedirect()
 	{
 		$routes = $this->getCollector();
@@ -698,7 +879,45 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$routes->addRedirect('users', 'Users::index', 307);
 
 		$expected = [
-			'users' => '\Users::index'
+			'users' => '\Users::index',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+		$this->assertTrue($routes->isRedirect('users'));
+		$this->assertEquals(307, $routes->getRedirectCode('users'));
+		$this->assertEquals(0, $routes->getRedirectCode('bosses'));
+	}
+
+	public function testAddRedirectNamed()
+	{
+		$routes = $this->getCollector();
+
+		$routes->add('zombies', 'Zombies::index', ['as' => 'namedRoute']);
+		$routes->addRedirect('users', 'namedRoute', 307);
+
+		$expected = [
+			'users'   => [
+				'zombies' => '\Zombies::index',
+			],
+			'zombies' => '\Zombies::index',
+		];
+
+		$this->assertEquals($expected, $routes->getRoutes());
+		$this->assertTrue($routes->isRedirect('users'));
+		$this->assertEquals(307, $routes->getRedirectCode('users'));
+	}
+
+	public function testAddRedirectGetMethod(){
+		$routes = $this->getCollector();
+
+		$routes->get('zombies', 'Zombies::index', ['as' => 'namedRoute']);
+		$routes->addRedirect('users', 'namedRoute', 307);
+
+		$expected = [
+			'users'   => [
+				'zombies' => '\Zombies::index',
+			],
+			'zombies' => '\Zombies::index',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -709,7 +928,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 	//--------------------------------------------------------------------
 
 	/**
-	 * @see https://github.com/bcit-ci/CodeIgniter4/issues/497
+	 * @see https://github.com/codeigniter4/CodeIgniter4/issues/497
 	 */
 	public function testWithSubdomain()
 	{
@@ -718,9 +937,90 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$_SERVER['HTTP_HOST'] = 'adm.example.com';
 
 		$routes->add('/objects/(:alphanum)', 'Admin::objectsList/$1', ['subdomain' => 'adm']);
+		$routes->add('/objects/(:alphanum)', 'App::objectsList/$1');
 
 		$expects = [
-			'objects/([a-zA-Z0-9]+)' => '\Admin::objectsList/$1'
+			'objects/([a-zA-Z0-9]+)' => '\Admin::objectsList/$1',
+		];
+
+		$this->assertEquals($expects, $routes->getRoutes());
+	}
+
+	public function testWithSubdomainMissing()
+	{
+		$routes = $this->getCollector();
+
+		//      $_SERVER['HTTP_HOST'] = 'adm.example.com';
+
+		$routes->add('/objects/(:alphanum)', 'Admin::objectsList/$1', ['subdomain' => 'adm']);
+		$routes->add('/objects/(:alphanum)', 'App::objectsList/$1');
+
+		$expects = [
+			'objects/([a-zA-Z0-9]+)' => '\App::objectsList/$1',
+		];
+
+		$this->assertEquals($expects, $routes->getRoutes());
+	}
+
+	public function testWithDifferentSubdomain()
+	{
+		$routes = $this->getCollector();
+
+		$_SERVER['HTTP_HOST'] = 'adm.example.com';
+
+		$routes->add('/objects/(:alphanum)', 'Admin::objectsList/$1', ['subdomain' => 'sales']);
+		$routes->add('/objects/(:alphanum)', 'App::objectsList/$1');
+
+		$expects = [
+			'objects/([a-zA-Z0-9]+)' => '\App::objectsList/$1',
+		];
+
+		$this->assertEquals($expects, $routes->getRoutes());
+	}
+
+	public function testWithWWWSubdomain()
+	{
+		$routes = $this->getCollector();
+
+		$_SERVER['HTTP_HOST'] = 'www.example.com';
+
+		$routes->add('/objects/(:alphanum)', 'Admin::objectsList/$1', ['subdomain' => 'sales']);
+		$routes->add('/objects/(:alphanum)', 'App::objectsList/$1');
+
+		$expects = [
+			'objects/([a-zA-Z0-9]+)' => '\App::objectsList/$1',
+		];
+
+		$this->assertEquals($expects, $routes->getRoutes());
+	}
+
+	public function testWithDotCoSubdomain()
+	{
+		$routes = $this->getCollector();
+
+		$_SERVER['HTTP_HOST'] = 'example.uk.co';
+
+		$routes->add('/objects/(:alphanum)', 'Admin::objectsList/$1', ['subdomain' => 'sales']);
+		$routes->add('/objects/(:alphanum)', 'App::objectsList/$1');
+
+		$expects = [
+			'objects/([a-zA-Z0-9]+)' => '\App::objectsList/$1',
+		];
+
+		$this->assertEquals($expects, $routes->getRoutes());
+	}
+
+	public function testWithDifferentSubdomainMissing()
+	{
+		$routes = $this->getCollector();
+
+		$_SERVER['HTTP_HOST'] = 'adm.example.com';
+
+		$routes->add('/objects/(:alphanum)', 'Admin::objectsList/$1', ['subdomain' => 'nothere']);
+		$routes->add('/objects/(:alphanum)', 'App::objectsList/$1', ['subdomain' => '*']);
+
+		$expects = [
+			'objects/([a-zA-Z0-9]+)' => '\App::objectsList/$1',
 		];
 
 		$this->assertEquals($expects, $routes->getRoutes());
@@ -729,17 +1029,49 @@ class RouteCollectionTest extends \CIUnitTestCase
 	//--------------------------------------------------------------------
 
 	/**
-	 * @see https://github.com/bcit-ci/CodeIgniter4/issues/568
+	 * @see https://github.com/codeigniter4/CodeIgniter4/issues/1692
+	 */
+	public function testWithSubdomainOrdered()
+	{
+		$routes = $this->getCollector();
+
+		$_SERVER['HTTP_HOST'] = 'adm.example.com';
+
+		$routes->add('/objects/(:alphanum)', 'App::objectsList/$1');
+		$routes->add('/objects/(:alphanum)', 'Admin::objectsList/$1', ['subdomain' => 'adm']);
+
+		$expects = [
+			'objects/([a-zA-Z0-9]+)' => '\Admin::objectsList/$1',
+		];
+
+		$this->assertEquals($expects, $routes->getRoutes());
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * @see https://github.com/codeigniter4/CodeIgniter4/issues/568
 	 */
 	public function testReverseRoutingWithClosure()
 	{
 		$routes = $this->getCollector();
 
-		$routes->add('login', function() {});
+		$routes->add('login', function () {
+		});
 
 		$match = $routes->reverseRoute('login');
 
 		$this->assertEquals('/login', $match);
+	}
+
+	public function testReverseRoutingWithClosureNoMatch()
+	{
+		$routes = $this->getCollector();
+
+		$routes->add('login', function () {
+		});
+
+		$this->assertFalse($routes->reverseRoute('foobar'));
 	}
 
 	//--------------------------------------------------------------------
@@ -747,15 +1079,374 @@ class RouteCollectionTest extends \CIUnitTestCase
 	public function testWillDiscoverLocal()
 	{
 		$config = [
-			'SampleSpace' => TESTPATH .'_support'
+			'SampleSpace' => TESTPATH . '_support',
 		];
 
-		$routes = $this->getCollector($config);
-		$routes->discoverLocal(true);
+		$moduleConfig          = new \Config\Modules();
+		$moduleConfig->enabled = true;
+
+		$routes = $this->getCollector($config, [], $moduleConfig);
 
 		$match = $routes->getRoutes();
 
-		$this->assertTrue(array_key_exists('testing', $match));
+		$this->assertArrayHasKey('testing', $match);
 		$this->assertEquals($match['testing'], '\TestController::index');
 	}
+
+	//--------------------------------------------------------------------
+
+	public function testDiscoverLocalAllowsConfigToOverridePackages()
+	{
+		$config = [
+			'SampleSpace' => TESTPATH . '_support',
+		];
+
+		$moduleConfig          = new \Config\Modules();
+		$moduleConfig->enabled = true;
+
+		$routes = $this->getCollector($config, [], $moduleConfig);
+
+		$routes->add('testing', 'MainRoutes::index');
+
+		$match = $routes->getRoutes();
+
+		$this->assertArrayHasKey('testing', $match);
+		$this->assertEquals($match['testing'], '\MainRoutes::index');
+	}
+
+	//--------------------------------------------------------------------
+
+	public function testRoutesOptions()
+	{
+		$routes = $this->getCollector();
+
+		// options need to be declared separately, to not confuse PHPCBF
+		$options = [
+			'as'  => 'admin',
+			'foo' => 'baz',
+		];
+		$routes->add(
+				'administrator', function () {
+				}, $options
+		);
+
+		$options = $routes->getRoutesOptions('administrator');
+
+		$this->assertEquals($options, ['as' => 'admin', 'foo' => 'baz']);
+	}
+
+	public function testRouteGroupWithFilterSimple()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$routes->group(
+				'admin', ['filter' => 'role'], function ($routes) {
+					$routes->add('users', '\Users::list');
+				}
+		);
+
+		$this->assertTrue($routes->isFiltered('admin/users'));
+		$this->assertFalse($routes->isFiltered('admin/franky'));
+		$this->assertEquals('role', $routes->getFilterForRoute('admin/users'));
+		$this->assertEquals('', $routes->getFilterForRoute('admin/bosses'));
+	}
+
+	public function testRouteGroupWithFilterWithParams()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$routes->group(
+				'admin', ['filter' => 'role:admin,manager'], function ($routes) {
+					$routes->add('users', '\Users::list');
+				}
+		);
+
+		$this->assertTrue($routes->isFiltered('admin/users'));
+		$this->assertFalse($routes->isFiltered('admin/franky'));
+		$this->assertEquals('role:admin,manager', $routes->getFilterForRoute('admin/users'));
+	}
+
+	//--------------------------------------------------------------------
+
+	public function test404OverrideNot()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$this->assertEquals(null, $routes->get404Override());
+	}
+
+	public function test404OverrideString()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$routes->set404Override('Explode');
+		$this->assertEquals('Explode', $routes->get404Override());
+	}
+
+	public function test404OverrideCallable()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$routes->set404Override(function () {
+			echo 'Explode now';
+		}
+		);
+		$this->assertTrue(is_callable($routes->get404Override()));
+	}
+
+	//--------------------------------------------------------------------
+
+	public function testOffsetParameters()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+
+		$routes->get('users/(:num)', 'users/show/$1', ['offset' => 1]);
+		$expected = ['users/([0-9]+)' => '\users/show/$2'];
+		$this->assertEquals($expected, $routes->getRoutes());
+	}
+
+	//--------------------------------------------------------------------
+	// Battery of tests for reported issue
+	// @see https://github.com/codeigniter4/CodeIgniter4/issues/1697
+
+	/**
+	 */
+	public function testRouteToWithSubdomainMatch()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'doc.example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['subdomain' => 'doc', 'as' => 'doc_item']);
+
+		$this->assertEquals('/i/sth', $routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	public function testRouteToWithSubdomainMismatch()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'dev.example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['subdomain' => 'doc', 'as' => 'doc_item']);
+
+		$this->assertFalse($routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	public function testRouteToWithSubdomainNot()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['subdomain' => 'doc', 'as' => 'doc_item']);
+
+		$this->assertFalse($routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	public function testRouteToWithGenericSubdomainMatch()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'doc.example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['subdomain' => '*', 'as' => 'doc_item']);
+
+		$this->assertEquals('/i/sth', $routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	public function testRouteToWithGenericSubdomainMismatch()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'dev.example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['subdomain' => '*', 'as' => 'doc_item']);
+
+		$this->assertEquals('/i/sth', $routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	public function testRouteToWithGenericSubdomainNot()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['subdomain' => '*', 'as' => 'doc_item']);
+
+		$this->assertEquals('/i/sth', $routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	public function testRouteToWithoutSubdomainMatch()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'doc.example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['hostname' => 'example.com', 'as' => 'doc_item']);
+
+		$this->assertFalse($routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	public function testRouteToWithoutSubdomainMismatch()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'dev.example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['hostname' => 'example.com', 'as' => 'doc_item']);
+
+		$this->assertFalse($routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	public function testRouteToWithoutSubdomainNot()
+	{
+		$routes = $this->getCollector();
+
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'example.com';
+
+		$routes->get('i/(:any)', 'App\Controllers\Site\CDoc::item/$1', ['hostname' => 'example.com', 'as' => 'doc_item']);
+
+		$this->assertEquals('/i/sth', $routes->reverseRoute('doc_item', 'sth'));
+	}
+
+	//--------------------------------------------------------------------
+	// Tests for router overwritting issue
+	// @see https://github.com/codeigniter4/CodeIgniter4/issues/1692
+
+	public function testRouteOverwritingDifferentSubdomains()
+	{
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'doc.domain.com';
+
+		$routes = $this->getCollector();
+		$router = new Router($routes, Services::request());
+
+		$routes->setDefaultNamespace('App\Controllers');
+		$routes->setDefaultController('Home');
+		$routes->setDefaultMethod('index');
+		$routes->setHTTPVerb('get');
+
+		$routes->get('/', '\App\Controllers\Site\CDoc::index', ['subdomain' => 'doc', 'as' => 'doc_index']);
+		$routes->get('/', 'Home::index', ['subdomain' => 'dev']);
+
+		$expects = '\App\Controllers\Site\CDoc';
+
+		$this->assertEquals($expects, $router->handle('/'));
+	}
+
+	public function testRouteOverwritingTwoRules()
+	{
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'doc.domain.com';
+
+		$routes = $this->getCollector();
+		$router = new Router($routes, Services::request());
+
+		$routes->setDefaultNamespace('App\Controllers');
+		$routes->setDefaultController('Home');
+		$routes->setDefaultMethod('index');
+
+		$routes->get('/', '\App\Controllers\Site\CDoc::index', ['subdomain' => 'doc', 'as' => 'doc_index']);
+		$routes->get('/', 'Home::index');
+
+		// the second rule applies, so overwrites the first
+		$expects = '\App\Controllers\Home';
+
+		$this->assertEquals($expects, $router->handle('/'));
+	}
+
+	public function testRouteOverwritingTwoRulesLastApplies()
+	{
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'doc.domain.com';
+
+		$routes = $this->getCollector();
+		$router = new Router($routes, Services::request());
+
+		$routes->setDefaultNamespace('App\Controllers');
+		$routes->setDefaultController('Home');
+		$routes->setDefaultMethod('index');
+
+		$routes->get('/', 'Home::index');
+		$routes->get('/', '\App\Controllers\Site\CDoc::index', ['subdomain' => 'doc', 'as' => 'doc_index']);
+
+		$expects = '\App\Controllers\Site\CDoc';
+
+		$this->assertEquals($expects, $router->handle('/'));
+	}
+
+	public function testRouteOverwritingMatchingSubdomain()
+	{
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'doc.domain.com';
+
+		$routes = $this->getCollector();
+		$router = new Router($routes, Services::request());
+
+		$routes->setDefaultNamespace('App\Controllers');
+		$routes->setDefaultController('Home');
+		$routes->setDefaultMethod('index');
+
+		$routes->get('/', 'Home::index', ['as' => 'ddd']);
+		$routes->get('/', '\App\Controllers\Site\CDoc::index', ['subdomain' => 'doc', 'as' => 'doc_index']);
+
+		$expects = '\App\Controllers\Site\CDoc';
+
+		$this->assertEquals($expects, $router->handle('/'));
+	}
+
+	public function testRouteOverwritingMatchingHost()
+	{
+		Services::request()->setMethod('get');
+		$_SERVER['HTTP_HOST'] = 'doc.domain.com';
+
+		$routes = $this->getCollector();
+		$router = new Router($routes, Services::request());
+
+		$routes->setDefaultNamespace('App\Controllers');
+		$routes->setDefaultController('Home');
+		$routes->setDefaultMethod('index');
+
+		$routes->get('/', 'Home::index', ['as' => 'ddd']);
+		$routes->get('/', '\App\Controllers\Site\CDoc::index', ['hostname' => 'doc.domain.com', 'as' => 'doc_index']);
+
+		$expects = '\App\Controllers\Site\CDoc';
+
+		$this->assertEquals($expects, $router->handle('/'));
+	}
+
+	//--------------------------------------------------------------------
+	// Tests for router DefaultNameSpace issue
+	// @see https://github.com/codeigniter4/CodeIgniter4/issues/2423
+
+	public function testRouteDefaultNameSpace()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+		$router = new Router($routes, Services::request());
+
+		$routes->setDefaultNamespace('App\Controllers');
+		$routes->get('/', 'Core\Home::index');
+
+		$expects = '\App\Controllers\Core\Home';
+
+		$this->assertEquals($expects, $router->handle('/'));
+	}
+
 }

@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Database;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +28,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Database;
 
 /**
  * Interface QueryInterface
@@ -50,12 +53,13 @@ interface QueryInterface
 	/**
 	 * Sets the raw query string to use for this statement.
 	 *
-	 * @param string $sql
-	 * @param array $binds
+	 * @param string  $sql
+	 * @param mixed   $binds
+	 * @param boolean $setEscape
 	 *
 	 * @return mixed
 	 */
-	public function setQuery(string $sql, $binds = null);
+	public function setQuery(string $sql, $binds = null, bool $setEscape = true);
 
 	//--------------------------------------------------------------------
 
@@ -87,19 +91,19 @@ interface QueryInterface
 	 * Returns the duration of this query during execution, or null if
 	 * the query has not been executed yet.
 	 *
-	 * @param int    $decimals  The accuracy of the returned time.
+	 * @param integer $decimals The accuracy of the returned time.
 	 *
-	 * @return mixed
+	 * @return string
 	 */
-	public function getDuration(int $decimals = 6);
+	public function getDuration(int $decimals = 6): string;
 
 	//--------------------------------------------------------------------
 
 	/**
 	 * Stores the error description that happened for this query.
 	 *
-	 * @param int $code
-	 * @param string $error
+	 * @param integer $code
+	 * @param string  $error
 	 */
 	public function setError(int $code, string $error);
 
@@ -108,7 +112,7 @@ interface QueryInterface
 	/**
 	 * Reports whether this statement created an error not.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function hasError(): bool;
 
@@ -117,7 +121,7 @@ interface QueryInterface
 	/**
 	 * Returns the error code created while executing this statement.
 	 *
-	 * @return int
+	 * @return integer
 	 */
 	public function getErrorCode(): int;
 
@@ -135,7 +139,7 @@ interface QueryInterface
 	/**
 	 * Determines if the statement is a write-type query or not.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function isWriteType(): bool;
 

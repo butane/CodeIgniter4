@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Database;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +28,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Database;
+
 use CodeIgniter\Config\BaseConfig;
-use Config\Database;
 
 /**
  * Class Config
@@ -65,47 +68,53 @@ class Config extends BaseConfig
 	/**
 	 * Creates the default
 	 *
-	 * @param string|array  $group     The name of the connection group to use,
-	 *                                 or an array of configuration settings.
-	 * @param bool          $getShared Whether to return a shared instance of the connection.
+	 * @param string|array $group     The name of the connection group to use,
+	 *                                or an array of configuration settings.
+	 * @param boolean      $getShared Whether to return a shared instance of the connection.
 	 *
 	 * @return BaseConnection
 	 */
-	public static function connect($group = null, $getShared = true)
+	public static function connect($group = null, bool $getShared = true)
 	{
+		// If a DB connection is passed in, just pass it back
+		if ($group instanceof BaseConnection)
+		{
+			return $group;
+		}
+
 		if (is_array($group))
 		{
 			$config = $group;
-			$group = 'custom';
+			$group  = 'custom-' . md5(json_encode($config));
 		}
 
-		$config = $config ?? new \Config\Database();
+		$config = $config ?? config('Database');
 
 		if (empty($group))
 		{
-			$group = ENVIRONMENT == 'testing' ? 'tests' : $config->defaultGroup;
+			$group = ENVIRONMENT === 'testing' ? 'tests' : $config->defaultGroup;
 		}
 
-		if (is_string($group) && ! isset($config->$group) && $group != 'custom')
+		if (is_string($group) && ! isset($config->$group) && strpos($group, 'custom-') !== 0)
 		{
 			throw new \InvalidArgumentException($group . ' is not a valid database connection group.');
 		}
 
-		if ($getShared && isset(self::$instances[$group]))
+		if ($getShared && isset(static::$instances[$group]))
 		{
-			return self::$instances[$group];
+			return static::$instances[$group];
 		}
 
-		self::ensureFactory();
+		static::ensureFactory();
 
 		if (isset($config->$group))
 		{
 			$config = $config->$group;
 		}
 
-		$connection = self::$factory->load($config, $group);
+		$connection = static::$factory->load($config, $group);
 
-		self::$instances[$group] = & $connection;
+		static::$instances[$group] = & $connection;
 
 		return $connection;
 	}
@@ -117,9 +126,9 @@ class Config extends BaseConfig
 	 *
 	 * @return array
 	 */
-	public static function getConnections()
+	public static function getConnections(): array
 	{
-		return self::$instances;
+		return static::$instances;
 	}
 
 	//--------------------------------------------------------------------
@@ -128,36 +137,15 @@ class Config extends BaseConfig
 	 * Loads and returns an instance of the Forge for the specified
 	 * database group, and loads the group if it hasn't been loaded yet.
 	 *
-	 * @param string|null $group
+	 * @param string|array|null $group
 	 *
 	 * @return Forge
 	 */
-	public static function forge(string $group = null)
+	public static function forge($group = null)
 	{
-		$config = new \Config\Database();
+		$db = static::connect($group);
 
-		self::ensureFactory();
-
-		if (empty($group))
-		{
-			$group = ENVIRONMENT == 'testing' ? 'tests' : $config->defaultGroup;
-		}
-
-		if ( ! isset($config->$group))
-		{
-			throw new \InvalidArgumentException($group . ' is not a valid database connection group.');
-		}
-
-		if ( ! isset(self::$instances[$group]))
-		{
-			$db = self::connect($group);
-		}
-		else
-		{
-			$db = self::$instances[$group];
-		}
-
-		return self::$factory->loadForge($db);
+		return static::$factory->loadForge($db);
 	}
 
 	//--------------------------------------------------------------------
@@ -165,36 +153,15 @@ class Config extends BaseConfig
 	/**
 	 * Returns a new instance of the Database Utilities class.
 	 *
-	 * @param string|null $group
+	 * @param string|array|null $group
 	 *
 	 * @return BaseUtils
 	 */
-	public static function utils(string $group = null)
+	public static function utils($group = null)
 	{
-		$config = new \Config\Database();
+		$db = static::connect($group);
 
-		self::ensureFactory();
-
-		if (empty($group))
-		{
-			$group = $config->defaultGroup;
-		}
-
-		if ( ! isset($config->group))
-		{
-			throw new \InvalidArgumentException($group . ' is not a valid database connection group.');
-		}
-
-		if ( ! isset(self::$instances[$group]))
-		{
-			$db = self::connect($group);
-		}
-		else
-		{
-			$db = self::$instances[$group];
-		}
-
-		return self::$factory->loadUtils($db);
+		return static::$factory->loadUtils($db);
 	}
 
 	//--------------------------------------------------------------------
@@ -208,9 +175,9 @@ class Config extends BaseConfig
 	 */
 	public static function seeder(string $group = null)
 	{
-		$config = new \Config\Database();
+		$config = config('Database');
 
-		return new Seeder($config, self::connect($group));
+		return new Seeder($config, static::connect($group));
 	}
 
 	//--------------------------------------------------------------------
@@ -220,12 +187,12 @@ class Config extends BaseConfig
 	 */
 	protected static function ensureFactory()
 	{
-		if (self::$factory instanceof \CodeIgniter\Database\Database)
+		if (static::$factory instanceof Database)
 		{
 			return;
 		}
 
-		self::$factory = new \CodeIgniter\Database\Database();
+		static::$factory = new Database();
 	}
 
 	//--------------------------------------------------------------------

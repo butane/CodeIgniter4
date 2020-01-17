@@ -1,13 +1,14 @@
 <?php namespace CodeIgniter\Database\Live;
 
 use CodeIgniter\Database\Query;
+use CodeIgniter\Test\CIDatabaseTestCase;
 
 /**
  * @group DatabaseLive
  */
-class PretendTest extends \CIDatabaseTestCase
+class PretendTest extends CIDatabaseTestCase
 {
-	public function tearDown()
+	public function tearDown(): void
 	{
 		// We share `$this->db` in testing, so we need to restore the state.
 		$this->db->pretend(false);
@@ -25,7 +26,7 @@ class PretendTest extends \CIDatabaseTestCase
 					->table('user')
 					->get();
 
-		$this->assertTrue($result instanceof Query);
+		$this->assertInstanceOf(Query::class, $result);
 	}
 
 	//--------------------------------------------------------------------

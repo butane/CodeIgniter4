@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Validation;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,29 +28,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
+namespace CodeIgniter\Validation;
+
 use CodeIgniter\HTTP\RequestInterface;
 
+/**
+ * Expected behavior of a validator
+ */
 interface ValidationInterface
 {
 
 	/**
-	 * Runs the validation process, returning true/false determing whether
+	 * Runs the validation process, returning true/false determining whether
 	 * or not validation was successful.
 	 *
-	 * @param array  $data		The array of data to validate.
-	 * @param string $group		The pre-defined group of rules to apply.
+	 * @param array  $data  The array of data to validate.
+	 * @param string $group The pre-defined group of rules to apply.
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
-	public function run(array $data, string $group = null): bool;
+	public function run(array $data = null, string $group = null): bool;
 
 	//--------------------------------------------------------------------
 
@@ -61,15 +68,15 @@ interface ValidationInterface
 	 * @param string   $rule   Rule.
 	 * @param string[] $errors Errors.
 	 *
-	 * @return bool True if valid, else false.
+	 * @return boolean True if valid, else false.
 	 */
 	public function check($value, string $rule, array $errors = []): bool;
 
 	//--------------------------------------------------------------------
 
 	/**
-	 * Takes a Request object and grabs the data to use from its
-	 * POST array values.
+	 * Takes a Request object and grabs the input data to use from its
+	 * array values.
 	 *
 	 * @param \CodeIgniter\HTTP\RequestInterface $request
 	 *
@@ -85,10 +92,11 @@ interface ValidationInterface
 	 * Stores the rules that should be used to validate the items.
 	 *
 	 * @param array $rules
+	 * @param array $messages
 	 *
 	 * @return \CodeIgniter\Validation\ValidationInterface
 	 */
-	public function setRules(array $rules): ValidationInterface;
+	public function setRules(array $rules, array $messages = []): ValidationInterface;
 
 	//--------------------------------------------------------------------
 
@@ -97,7 +105,7 @@ interface ValidationInterface
 	 *
 	 * @param string $field
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	public function hasRule(string $field): bool;
 
@@ -119,7 +127,7 @@ interface ValidationInterface
 
 	/**
 	 * Returns the array of errors that were encountered during
-	 * a run() call. The array should be in the followig format:
+	 * a run() call. The array should be in the following format:
 	 *
 	 *    [
 	 *        'field1' => 'error message',
@@ -150,7 +158,7 @@ interface ValidationInterface
 	 * Resets the class to a blank slate. Should be called whenever
 	 * you need to process more than one array.
 	 *
-	 * @return mixed
+	 * @return \CodeIgniter\Validation\ValidationInterface
 	 */
 	public function reset(): ValidationInterface;
 

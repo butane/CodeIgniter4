@@ -1,7 +1,6 @@
 <?php namespace Builder;
 
-use CodeIgniter\Database\BaseBuilder;
-use CodeIgniter\Database\MockConnection;
+use Tests\Support\Database\MockConnection;
 
 class DeleteTest extends \CIUnitTestCase
 {
@@ -9,8 +8,10 @@ class DeleteTest extends \CIUnitTestCase
 
 	//--------------------------------------------------------------------
 
-	public function setUp()
+	protected function setUp(): void
 	{
+		parent::setUp();
+
 		$this->db = new MockConnection([]);
 	}
 
@@ -20,14 +21,18 @@ class DeleteTest extends \CIUnitTestCase
 	{
 		$builder = $this->db->table('jobs');
 
-		$answer = $builder->delete(['id' => 1], null, true, true);
+		$answer = $builder->testMode()->delete(['id' => 1], null, true);
 
-		$expectedSQL   = "DELETE FROM \"jobs\" WHERE \"id\" = :id:";
-		$expectedBinds = ['id' => 1];
+		$expectedSQL   = 'DELETE FROM "jobs" WHERE "id" = :id:';
+		$expectedBinds = [
+			'id' => [
+				1,
+				true,
+			],
+		];
 
 		$this->assertEquals($expectedSQL, str_replace("\n", ' ', $answer));
 		$this->assertEquals($expectedBinds, $builder->getBinds());
 	}
 
-	//--------------------------------------------------------------------
 }

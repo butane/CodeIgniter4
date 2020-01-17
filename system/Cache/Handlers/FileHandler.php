@@ -1,4 +1,4 @@
-<?php namespace CodeIgniter\Cache\Handlers;
+<?php
 
 /**
  * CodeIgniter
@@ -7,7 +7,8 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
+ * Copyright (c) 2019 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +28,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2019 CodeIgniter Foundation
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
-use CodeIgniter\Cache\CacheInterface;
 
+namespace CodeIgniter\Cache\Handlers;
+
+use CodeIgniter\Cache\CacheInterface;
+use CodeIgniter\Cache\Exceptions\CacheException;
+
+/**
+ * File system cache handler
+ */
 class FileHandler implements CacheInterface
 {
 
@@ -56,12 +64,22 @@ class FileHandler implements CacheInterface
 
 	//--------------------------------------------------------------------
 
+	/**
+	 * Constructor.
+	 *
+	 * @param  type $config
+	 * @throws type
+	 */
 	public function __construct($config)
 	{
-		$this->prefix = $config->prefix ?: '';
-		$this->path = ! empty($config->path) ? $config->path : WRITEPATH . 'cache';
+		$path = ! empty($config->storePath) ? $config->storePath : WRITEPATH . 'cache';
+		if (! is_really_writable($path))
+		{
+			throw CacheException::forUnableToWrite($path);
+		}
 
-		$this->path = rtrim($this->path, '/') . '/';
+		$this->prefix = $config->prefix ?: '';
+		$this->path   = rtrim($path, '/') . '/';
 	}
 
 	//--------------------------------------------------------------------
@@ -89,7 +107,7 @@ class FileHandler implements CacheInterface
 
 		$data = $this->getItem($key);
 
-		return is_array($data) ? $data['data'] : false;
+		return is_array($data) ? $data['data'] : null;
 	}
 
 	//--------------------------------------------------------------------
@@ -97,9 +115,9 @@ class FileHandler implements CacheInterface
 	/**
 	 * Saves an item to the cache store.
 	 *
-	 * @param string $key   Cache item name
-	 * @param mixed  $value The data to save
-	 * @param int    $ttl   Time To Live, in seconds (default 60)
+	 * @param string  $key   Cache item name
+	 * @param mixed   $value The data to save
+	 * @param integer $ttl   Time To Live, in seconds (default 60)
 	 *
 	 * @return mixed
 	 */
@@ -108,9 +126,9 @@ class FileHandler implements CacheInterface
 		$key = $this->prefix . $key;
 
 		$contents = [
-			'time'	 => time(),
-			'ttl'	 => $ttl,
-			'data'	 => $value,
+			'time' => time(),
+			'ttl'  => $ttl,
+			'data' => $value,
 		];
 
 		if ($this->writeFile($this->path . $key, serialize($contents)))
@@ -136,7 +154,7 @@ class FileHandler implements CacheInterface
 	{
 		$key = $this->prefix . $key;
 
-		return file_exists($this->path . $key) ? unlink($this->path . $key) : false;
+		return is_file($this->path . $key) ? unlink($this->path . $key) : false;
 	}
 
 	//--------------------------------------------------------------------
@@ -144,8 +162,8 @@ class FileHandler implements CacheInterface
 	/**
 	 * Performs atomic incrementation of a raw stored value.
 	 *
-	 * @param string $key    Cache ID
-	 * @param int    $offset Step/value to increase by
+	 * @param string  $key    Cache ID
+	 * @param integer $offset Step/value to increase by
 	 *
 	 * @return mixed
 	 */
@@ -157,9 +175,12 @@ class FileHandler implements CacheInterface
 
 		if ($data === false)
 		{
-			$data = ['data' => 0, 'ttl' => 60];
+			$data = [
+				'data' => 0,
+				'ttl'  => 60,
+			];
 		}
-		elseif ( ! is_int($data['data']))
+		elseif (! is_int($data['data']))
 		{
 			return false;
 		}
@@ -174,8 +195,8 @@ class FileHandler implements CacheInterface
 	/**
 	 * Performs atomic decrementation of a raw stored value.
 	 *
-	 * @param string $key    Cache ID
-	 * @param int    $offset Step/value to increase by
+	 * @param string  $key    Cache ID
+	 * @param integer $offset Step/value to increase by
 	 *
 	 * @return mixed
 	 */
@@ -187,9 +208,12 @@ class FileHandler implements CacheInterface
 
 		if ($data === false)
 		{
-			$data = ['data' => 0, 'ttl' => 60];
+			$data = [
+				'data' => 0,
+				'ttl'  => 60,
+			];
 		}
-		elseif ( ! is_int($data['data']))
+		elseif (! is_int($data['data']))
 		{
 			return false;
 		}
@@ -239,9 +263,9 @@ class FileHandler implements CacheInterface
 	{
 		$key = $this->prefix . $key;
 
-		if ( ! file_exists($this->path . $key))
+		if (! is_file($this->path . $key))
 		{
-			return FALSE;
+			return false;
 		}
 
 		$data = @unserialize(file_get_contents($this->path . $key));
@@ -250,19 +274,19 @@ class FileHandler implements CacheInterface
 		{
 			$mtime = filemtime($this->path . $key);
 
-			if ( ! isset($data['ttl']))
+			if (! isset($data['ttl']))
 			{
-				return FALSE;
+				return false;
 			}
 
 			return [
 				'expire' => $mtime + $data['ttl'],
-				'mtime'	 => $mtime,
-				'data'	 => $data['data'],
+				'mtime'  => $mtime,
+				'data'   => $data['data'],
 			];
 		}
 
-		return FALSE;
+		return false;
 	}
 
 	//--------------------------------------------------------------------
@@ -285,11 +309,11 @@ class FileHandler implements CacheInterface
 	 *
 	 * @param string $key
 	 *
-	 * @return bool|mixed
+	 * @return boolean|mixed
 	 */
 	protected function getItem(string $key)
 	{
-		if ( ! is_file($this->path . $key))
+		if (! is_file($this->path . $key))
 		{
 			return false;
 		}
@@ -314,11 +338,11 @@ class FileHandler implements CacheInterface
 	/**
 	 * Writes a file to disk, or returns false if not successful.
 	 *
-	 * @param        $path
-	 * @param        $data
+	 * @param $path
+	 * @param $data
 	 * @param string $mode
 	 *
-	 * @return bool
+	 * @return boolean
 	 */
 	protected function writeFile($path, $data, $mode = 'wb')
 	{
@@ -353,19 +377,19 @@ class FileHandler implements CacheInterface
 	 * If the second parameter is set to TRUE, any directories contained
 	 * within the supplied base directory will be nuked as well.
 	 *
-	 * @param    string $path    File path
-	 * @param    bool   $del_dir Whether to delete any directories found in the path
-	 * @param    bool   $htdocs  Whether to skip deleting .htaccess and index page files
-	 * @param    int    $_level  Current directory depth level (default: 0; internal use only)
+	 * @param string  $path    File path
+	 * @param boolean $del_dir Whether to delete any directories found in the path
+	 * @param boolean $htdocs  Whether to skip deleting .htaccess and index page files
+	 * @param integer $_level  Current directory depth level (default: 0; internal use only)
 	 *
-	 * @return    bool
+	 * @return boolean
 	 */
-	protected function deleteFiles($path, $del_dir = false, $htdocs = false, $_level = 0)
+	protected function deleteFiles(string $path, bool $del_dir = false, bool $htdocs = false, int $_level = 0): bool
 	{
 		// Trim the trailing slash
 		$path = rtrim($path, '/\\');
 
-		if ( ! $current_dir = @opendir($path))
+		if (! $current_dir = @opendir($path))
 		{
 			return false;
 		}
@@ -400,23 +424,23 @@ class FileHandler implements CacheInterface
 	 *
 	 * Any sub-folders contained within the specified path are read as well.
 	 *
-	 * @param    string $source_dir     Path to source
-	 * @param    bool   $top_level_only Look only at the top level directory specified?
-	 * @param    bool   $_recursion     Internal variable to determine recursion status - do not use in calls
+	 * @param string  $source_dir     Path to source
+	 * @param boolean $top_level_only Look only at the top level directory specified?
+	 * @param boolean $_recursion     Internal variable to determine recursion status - do not use in calls
 	 *
-	 * @return    array|false
+	 * @return array|false
 	 */
-	protected function getDirFileInfo($source_dir, $top_level_only = true, $_recursion = false)
+	protected function getDirFileInfo(string $source_dir, bool $top_level_only = true, bool $_recursion = false)
 	{
 		static $_filedata = [];
-		$relative_path = $source_dir;
+		$relative_path    = $source_dir;
 
 		if ($fp = @opendir($source_dir))
 		{
 			// reset the array and make sure $source_dir has a trailing slash on the initial call
 			if ($_recursion === false)
 			{
-				$_filedata = [];
+				$_filedata  = [];
 				$source_dir = rtrim(realpath($source_dir), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
 			}
 
@@ -429,7 +453,7 @@ class FileHandler implements CacheInterface
 				}
 				elseif ($file[0] !== '.')
 				{
-					$_filedata[$file] = $this->getFileInfo($source_dir . $file);
+					$_filedata[$file]                  = $this->getFileInfo($source_dir . $file);
 					$_filedata[$file]['relative_path'] = $relative_path;
 				}
 			}
@@ -452,16 +476,21 @@ class FileHandler implements CacheInterface
 	 * Options are: name, server_path, size, date, readable, writable, executable, fileperms
 	 * Returns FALSE if the file cannot be found.
 	 *
-	 * @param    string $file            Path to file
-	 * @param    mixed  $returned_values Array or comma separated string of information returned
+	 * @param string $file            Path to file
+	 * @param mixed  $returned_values Array or comma separated string of information returned
 	 *
-	 * @return    array|false
+	 * @return array|false
 	 */
-	protected function getFileInfo(string $file, array $returned_values = ['name', 'server_path', 'size', 'date'])
+	protected function getFileInfo(string $file, $returned_values = ['name', 'server_path', 'size', 'date'])
 	{
-		if ( ! file_exists($file))
+		if (! is_file($file))
 		{
 			return false;
+		}
+
+		if (is_string($returned_values))
+		{
+			$returned_values = explode(',', $returned_values);
 		}
 
 		foreach ($returned_values as $key)
@@ -469,33 +498,33 @@ class FileHandler implements CacheInterface
 			switch ($key)
 			{
 				case 'name':
-					$fileinfo['name'] = basename($file);
+					$fileInfo['name'] = basename($file);
 					break;
 				case 'server_path':
-					$fileinfo['server_path'] = $file;
+					$fileInfo['server_path'] = $file;
 					break;
 				case 'size':
-					$fileinfo['size'] = filesize($file);
+					$fileInfo['size'] = filesize($file);
 					break;
 				case 'date':
-					$fileinfo['date'] = filemtime($file);
+					$fileInfo['date'] = filemtime($file);
 					break;
 				case 'readable':
-					$fileinfo['readable'] = is_readable($file);
+					$fileInfo['readable'] = is_readable($file);
 					break;
 				case 'writable':
-					$fileinfo['writable'] = is_writable($file);
+					$fileInfo['writable'] = is_writable($file);
 					break;
 				case 'executable':
-					$fileinfo['executable'] = is_executable($file);
+					$fileInfo['executable'] = is_executable($file);
 					break;
 				case 'fileperms':
-					$fileinfo['fileperms'] = fileperms($file);
+					$fileInfo['fileperms'] = fileperms($file);
 					break;
 			}
 		}
 
-		return $fileinfo;
+		return $fileInfo;
 	}
 
 	//--------------------------------------------------------------------

@@ -7,7 +7,7 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014-2017 British Columbia Institute of Technology
+ * Copyright (c) 2014-2019 British Columbia Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +27,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package	CodeIgniter
- * @author	CodeIgniter Dev Team
- * @copyright	2014-2017 British Columbia Institute of Technology (https://bcit.ca/)
- * @license	https://opensource.org/licenses/MIT	MIT License
- * @link	https://codeigniter.com
- * @since	Version 3.0.0
+ * @package    CodeIgniter
+ * @author     CodeIgniter Dev Team
+ * @copyright  2014-2019 British Columbia Institute of Technology (https://bcit.ca/)
+ * @license    https://opensource.org/licenses/MIT	MIT License
+ * @link       https://codeigniter.com
+ * @since      Version 4.0.0
  * @filesource
  */
+
 class RedisHandlerTest extends \CIUnitTestCase
 {
 	private $redisHandler;
@@ -44,28 +45,34 @@ class RedisHandlerTest extends \CIUnitTestCase
 	private static function getKeyArray()
 	{
 		return [
-			self::$key1, self::$key2, self::$key3
+			self::$key1,
+			self::$key2,
+			self::$key3,
 		];
 	}
 
 	private static $dummy = 'dymmy';
 	private $config;
 
-	public function setUp()
+	protected function setUp(): void
 	{
+		parent::setUp();
+
 		$this->config = new \Config\Cache();
 
-		$this->redisHandler = new RedisHandler($this->config->redis);
-		if (!$this->redisHandler->isSupported()) {
+		$this->redisHandler = new RedisHandler($this->config);
+		if (! $this->redisHandler->isSupported())
+		{
 			$this->markTestSkipped('Not support redis');
 		}
 
 		$this->redisHandler->initialize();
 	}
 
-	public function tearDown()
+	public function tearDown(): void
 	{
-		foreach (self::getKeyArray() as $key) {
+		foreach (self::getKeyArray() as $key)
+		{
 			$this->redisHandler->delete($key);
 		}
 	}
@@ -77,22 +84,21 @@ class RedisHandlerTest extends \CIUnitTestCase
 
 	public function testDestruct()
 	{
-		$this->redisHandler = new RedisHandler($this->config->redis);
+		$this->redisHandler = new RedisHandler($this->config);
 		$this->redisHandler->initialize();
 
 		$this->assertInstanceOf(RedisHandler::class, $this->redisHandler);
 	}
-
 
 	public function testGet()
 	{
 		$this->redisHandler->save(self::$key1, 'value', 1);
 
 		$this->assertSame('value', $this->redisHandler->get(self::$key1));
-		$this->assertFalse($this->redisHandler->get(self::$dummy));
+		$this->assertNull($this->redisHandler->get(self::$dummy));
 
 		\CodeIgniter\CLI\CLI::wait(2);
-		$this->assertFalse($this->redisHandler->get(self::$key1));
+		$this->assertNull($this->redisHandler->get(self::$key1));
 	}
 
 	public function testSave()
@@ -137,7 +143,7 @@ class RedisHandlerTest extends \CIUnitTestCase
 		$time = time();
 		$this->redisHandler->save(self::$key1, 'value');
 
-		$this->assertFalse($this->redisHandler->getMetaData(self::$dummy));
+		$this->assertNull($this->redisHandler->getMetaData(self::$dummy));
 
 		$actual = $this->redisHandler->getMetaData(self::$key1);
 		$this->assertLessThanOrEqual(60, $actual['expire'] - $time);
