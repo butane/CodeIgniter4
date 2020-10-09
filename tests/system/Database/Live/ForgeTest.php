@@ -137,6 +137,38 @@ class ForgeTest extends CIDatabaseTestCase
 		$this->assertTrue($exist);
 	}
 
+	public function testCreateTableApplyBigInt()
+	{
+		$this->forge->dropTable('forge_test_table', true);
+
+		$this->forge->addField([
+			'id' => [
+				'type'           => 'BIGINT',
+				'unsigned'       => true,
+				'auto_increment' => true,
+			],
+		]);
+
+		$this->forge->addPrimaryKey('id');
+		$this->forge->createTable('forge_test_table', true);
+
+		$fieldsData = $this->db->getFieldData('forge_test_table');
+		if ($this->db->DBDriver === 'MySQLi')
+		{
+			$this->assertEquals(strtolower($fieldsData[0]->type), 'bigint');
+		}
+		elseif ($this->db->DBDriver === 'Postgre')
+		{
+			$this->assertEquals(strtolower($fieldsData[0]->type), 'bigint');
+		}
+		elseif ($this->db->DBDriver === 'SQLite3')
+		{
+			$this->assertEquals(strtolower($fieldsData[0]->type), 'integer');
+		}
+
+		$this->forge->dropTable('forge_test_table', true);
+	}
+
 	public function testCreateTableWithAttributes()
 	{
 		if ($this->db->DBDriver === 'SQLite3')
@@ -758,5 +790,81 @@ class ForgeTest extends CIDatabaseTestCase
 		{
 			$this->assertCount(0, $this->db->getIndexData('droptest'));
 		}
+	}
+
+	public function testDropMultipleColumnWithArray()
+	{
+		$this->forge->dropTable('forge_test_two', true);
+
+		$this->forge->addField([
+			'id'    => [
+				'type'           => 'INTEGER',
+				'constraint'     => 11,
+				'unsigned'       => false,
+				'auto_increment' => true,
+			],
+			'name'  => [
+				'type'       => 'varchar',
+				'constraint' => 255,
+				'null'       => true,
+			],
+			'email' => [
+				'type'       => 'varchar',
+				'constraint' => 255,
+				'null'       => true,
+			],
+		]);
+
+		$this->forge->addKey('id', true);
+		$this->forge->createTable('forge_test_two');
+
+		$this->assertTrue($this->db->fieldExists('name', 'forge_test_two'));
+
+		$this->forge->dropColumn('forge_test_two', ['id', 'name']);
+
+		$this->db->resetDataCache();
+
+		$this->assertFalse($this->db->fieldExists('id', 'forge_test_two'));
+		$this->assertFalse($this->db->fieldExists('name', 'forge_test_two'));
+
+		$this->forge->dropTable('forge_test_two', true);
+	}
+
+	public function testDropMultipleColumnWithString()
+	{
+		$this->forge->dropTable('forge_test_four', true);
+
+		$this->forge->addField([
+			'id'    => [
+				'type'           => 'INTEGER',
+				'constraint'     => 11,
+				'unsigned'       => false,
+				'auto_increment' => true,
+			],
+			'name'  => [
+				'type'       => 'varchar',
+				'constraint' => 255,
+				'null'       => true,
+			],
+			'email' => [
+				'type'       => 'varchar',
+				'constraint' => 255,
+				'null'       => true,
+			],
+		]);
+
+		$this->forge->addKey('id', true);
+		$this->forge->createTable('forge_test_four');
+
+		$this->assertTrue($this->db->fieldExists('name', 'forge_test_four'));
+
+		$this->forge->dropColumn('forge_test_four', 'id, name');
+
+		$this->db->resetDataCache();
+
+		$this->assertFalse($this->db->fieldExists('id', 'forge_test_four'));
+		$this->assertFalse($this->db->fieldExists('name', 'forge_test_four'));
+
+		$this->forge->dropTable('forge_test_four', true);
 	}
 }

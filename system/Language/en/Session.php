@@ -5,7 +5,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -20,4 +20,5 @@ return [
    'writeProtectedSavePath' => 'Session: Configured save path "{0}" is not writable by the PHP process.',
    'emptySavePath'          => 'Session: No save path configured.',
    'invalidSavePathFormat'  => 'Session: Invalid Redis save path format: {0}',
+   'invalidSameSiteSetting' => 'Session: The SameSite setting must be None, Lax, Strict, or a blank string. Given: {0}',
 ];

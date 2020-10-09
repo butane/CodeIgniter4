@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -39,9 +39,9 @@
 
 namespace CodeIgniter\Session\Handlers;
 
-use CodeIgniter\Session\Exceptions\SessionException;
-use CodeIgniter\Config\BaseConfig;
 use CodeIgniter\Database\BaseConnection;
+use CodeIgniter\Session\Exceptions\SessionException;
+use Config\App as AppConfig;
 use Config\Database;
 
 /**
@@ -90,10 +90,10 @@ class DatabaseHandler extends BaseHandler implements \SessionHandlerInterface
 	/**
 	 * Constructor
 	 *
-	 * @param BaseConfig $config
-	 * @param string     $ipAddress
+	 * @param AppConfig $config
+	 * @param string    $ipAddress
 	 */
-	public function __construct(BaseConfig $config, string $ipAddress)
+	public function __construct(AppConfig $config, string $ipAddress)
 	{
 		parent::__construct($config, $ipAddress);
 
@@ -106,6 +106,7 @@ class DatabaseHandler extends BaseHandler implements \SessionHandlerInterface
 		}
 
 		// Get DB Connection
+		// @phpstan-ignore-next-line
 		$this->DBGroup = $config->sessionDBGroup ?? config(Database::class)->defaultGroup;
 
 		$this->db = Database::connect($this->DBGroup);
@@ -165,7 +166,7 @@ class DatabaseHandler extends BaseHandler implements \SessionHandlerInterface
 		}
 
 		// Needed by write() to detect session_regenerate_id() calls
-		if (is_null($this->sessionID))
+		if (is_null($this->sessionID)) // @phpstan-ignore-line
 		{
 			$this->sessionID = $sessionID;
 		}
@@ -230,7 +231,7 @@ class DatabaseHandler extends BaseHandler implements \SessionHandlerInterface
 		}
 
 		// Was the ID regenerated?
-		elseif ($sessionID !== $this->sessionID)
+		if ($sessionID !== $this->sessionID)
 		{
 			$this->rowExists = false;
 			$this->sessionID = $sessionID;
@@ -371,7 +372,8 @@ class DatabaseHandler extends BaseHandler implements \SessionHandlerInterface
 
 			return $this->fail();
 		}
-		elseif ($this->platform === 'postgre')
+
+		if ($this->platform === 'postgre')
 		{
 			$arg = "hashtext('{$sessionID}')" . ($this->matchIP ? ", hashtext('{$this->ipAddress}')" : '');
 			if ($this->db->simpleQuery("SELECT pg_advisory_lock({$arg})"))
@@ -411,7 +413,8 @@ class DatabaseHandler extends BaseHandler implements \SessionHandlerInterface
 
 			return $this->fail();
 		}
-		elseif ($this->platform === 'postgre')
+
+		if ($this->platform === 'postgre')
 		{
 			if ($this->db->simpleQuery("SELECT pg_advisory_unlock({$this->lock})"))
 			{

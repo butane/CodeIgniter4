@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -51,7 +51,7 @@ class UserAgent
 	 *
 	 * @var string
 	 */
-	protected $agent = null;
+	protected $agent = '';
 
 	/**
 	 * Flag for if the user-agent belongs to a browser
@@ -130,14 +130,11 @@ class UserAgent
 	 *
 	 * Sets the User Agent and runs the compilation routine
 	 *
-	 * @param null $config
+	 * @param null|\Config\UserAgents $config
 	 */
-	public function __construct($config = null)
+	public function __construct(UserAgents $config = null)
 	{
-		if (is_null($config))
-		{
-			$this->config = new UserAgents();
-		}
+		$this->config = $config ?? new UserAgents();
 
 		if (isset($_SERVER['HTTP_USER_AGENT']))
 		{
@@ -241,10 +238,10 @@ class UserAgent
 			}
 			else
 			{
-				$referer_host = @parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
-				$own_host     = parse_url(\base_url(), PHP_URL_HOST);
+				$refererHost = @parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
+				$ownHost     = parse_url(\base_url(), PHP_URL_HOST);
 
-				$this->referrer = ($referer_host && $referer_host !== $own_host);
+				$this->referrer = ($refererHost && $refererHost !== $ownHost);
 			}
 		}
 

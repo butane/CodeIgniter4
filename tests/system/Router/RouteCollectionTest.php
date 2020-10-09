@@ -7,7 +7,7 @@ use CodeIgniter\Router\Exceptions\RouterException;
 /**
  * @backupGlobals enabled
  */
-class RouteCollectionTest extends \CIUnitTestCase
+class RouteCollectionTest extends \CodeIgniter\Test\CIUnitTestCase
 {
 
 	public function tearDown(): void
@@ -775,6 +775,19 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	//--------------------------------------------------------------------
 
+	public function testReverseRoutingWithLocaleAndFindsSimpleMatch()
+	{
+		$routes = $this->getCollector();
+
+		$routes->add('{locale}/path/(:any)/to/(:num)', 'myController::goto/$1/$2');
+
+		$match = $routes->reverseRoute('myController::goto', 'string', 13);
+
+		$this->assertEquals('/en/path/string/to/13', $match);
+	}
+
+	//--------------------------------------------------------------------
+
 	public function testReverseRoutingReturnsFalseWithBadParamCount()
 	{
 		$routes = $this->getCollector();
@@ -806,6 +819,16 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$this->expectException(RouterException::class);
 		$match = $routes->reverseRoute('myController::goto', 13, 'string');
 	}
+	//--------------------------------------------------------------------
+
+	public function testReverseRoutingWithLocale()
+	{
+		$routes = $this->getCollector();
+
+		$routes->add('{locale}/contact', 'myController::goto');
+
+		$this->assertEquals('/en/contact', $routes->reverseRoute('myController::goto'));
+	}
 
 	//--------------------------------------------------------------------
 
@@ -820,6 +843,17 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	//--------------------------------------------------------------------
 
+	public function testNamedRoutesWithLocale()
+	{
+		$routes = $this->getCollector();
+
+		$routes->add('{locale}/users', 'Users::index', ['as' => 'namedRoute']);
+
+		$this->assertEquals('/en/users', $routes->reverseRoute('namedRoute'));
+	}
+
+	//--------------------------------------------------------------------
+
 	public function testNamedRoutesFillInParams()
 	{
 		$routes = $this->getCollector();
@@ -829,6 +863,19 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$match = $routes->reverseRoute('namedRoute', 'string', 13);
 
 		$this->assertEquals('/path/string/to/13', $match);
+	}
+
+	//--------------------------------------------------------------------
+
+	public function testNamedRoutesWithLocaleAndFillInParams()
+	{
+		$routes = $this->getCollector();
+
+		$routes->add('{locale}/path/(:any)/to/(:num)', 'myController::goto/$1/$2', ['as' => 'namedRoute']);
+
+		$match = $routes->reverseRoute('namedRoute', 'string', 13);
+
+		$this->assertEquals('/en/path/string/to/13', $match);
 	}
 
 	//--------------------------------------------------------------------
@@ -861,6 +908,53 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 	//--------------------------------------------------------------------
 
+	/**
+	 * @see https://github.com/codeigniter4/CodeIgniter4/issues/642
+	 */
+	public function testNamedRoutesWithLocaleAndWithSameURIDifferentMethods()
+	{
+		$routes = $this->getCollector();
+
+		$routes->get('{locale}/user/insert', 'myController::goto/$1/$2', ['as' => 'namedRoute1']);
+		$routes->post(
+			'{locale}/user/insert',
+			function () {
+			},
+			['as' => 'namedRoute2']
+		);
+		$routes->put(
+			'{locale}/user/insert',
+			function () {
+			},
+			['as' => 'namedRoute3']
+		);
+
+		$match1 = $routes->reverseRoute('namedRoute1');
+		$match2 = $routes->reverseRoute('namedRoute2');
+		$match3 = $routes->reverseRoute('namedRoute3');
+
+		$this->assertEquals('/en/user/insert', $match1);
+		$this->assertEquals('/en/user/insert', $match2);
+		$this->assertEquals('/en/user/insert', $match3);
+	}
+
+	//--------------------------------------------------------------------
+
+	/**
+	 * @see https://github.com/codeigniter4/CodeIgniter4/issues/3048
+	 */
+	public function testNamedRoutesWithPipesInRegex()
+	{
+		$routes = $this->getCollector();
+
+		$routes->get('/system/(this|that)', 'myController::system/$1', ['as' => 'pipedRoute']);
+
+		$this->assertEquals('/system/this', $routes->reverseRoute('pipedRoute', 'this'));
+		$this->assertEquals('/system/that', $routes->reverseRoute('pipedRoute', 'that'));
+	}
+
+	//--------------------------------------------------------------------
+
 	public function testReverseRouteMatching()
 	{
 		$routes = $this->getCollector();
@@ -872,14 +966,30 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$this->assertEquals('/test/1/2', $match);
 	}
 
+	//--------------------------------------------------------------------
+
+	public function testReverseRouteMatchingWithLocale()
+	{
+		$routes = $this->getCollector();
+
+		$routes->get('{locale}/test/(:segment)/(:segment)', 'TestController::test/$1/$2', ['as' => 'testRouter']);
+
+		$match = $routes->reverseRoute('testRouter', 1, 2);
+
+		$this->assertEquals('/en/test/1/2', $match);
+	}
+
+	//--------------------------------------------------------------------
+
 	public function testAddRedirect()
 	{
 		$routes = $this->getCollector();
 
-		$routes->addRedirect('users', 'Users::index', 307);
+		//The second parameter is either the new URI to redirect to, or the name of a named route.
+		$routes->addRedirect('users', 'users/index', 307);
 
 		$expected = [
-			'users' => '\Users::index',
+			'users' => 'users/index',
 		];
 
 		$this->assertEquals($expected, $routes->getRoutes());
@@ -907,7 +1017,8 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$this->assertEquals(307, $routes->getRedirectCode('users'));
 	}
 
-	public function testAddRedirectGetMethod(){
+	public function testAddRedirectGetMethod()
+	{
 		$routes = $this->getCollector();
 
 		$routes->get('zombies', 'Zombies::index', ['as' => 'namedRoute']);
@@ -1106,7 +1217,7 @@ class RouteCollectionTest extends \CIUnitTestCase
 
 		$routes = $this->getCollector($config, [], $moduleConfig);
 
-		$routes->add('testing', 'MainRoutes::index');
+		$routes->add('testing', 'MainRoutes::index', ['as' => 'testing-index']);
 
 		$match = $routes->getRoutes();
 
@@ -1447,6 +1558,59 @@ class RouteCollectionTest extends \CIUnitTestCase
 		$expects = '\App\Controllers\Core\Home';
 
 		$this->assertEquals($expects, $router->handle('/'));
+	}
+
+	public function testZeroAsURIPath()
+	{
+		Services::request()->setMethod('get');
+		$routes = $this->getCollector();
+		$router = new Router($routes, Services::request());
+
+		$routes->setDefaultNamespace('App\Controllers');
+		$routes->get('/0', 'Core\Home::index');
+
+		$expects = '\App\Controllers\Core\Home';
+
+		$this->assertEquals($expects, $router->handle('/0'));
+	}
+
+	public function provideRouteDefaultNamespace()
+	{
+		return [
+			'with \\ prefix'    => ['\App\Controllers'],
+			'without \\ prefix' => ['App\Controllers'],
+		];
+	}
+
+	/**
+	 * @dataProvider provideRouteDefaultNamespace
+	 */
+	public function testAutoRoutesControllerNameReturnsFQCN($namespace)
+	{
+		$routes = $this->getCollector();
+		$routes->setAutoRoute(true);
+		$routes->setDefaultNamespace($namespace);
+
+		$router = new Router($routes, Services::request());
+		$router->handle('/product');
+
+		$this->assertEquals('\App\\Controllers\\Product', $router->controllerName());
+	}
+
+	/**
+	 * @dataProvider provideRouteDefaultNamespace
+	 */
+	public function testRoutesControllerNameReturnsFQCN($namespace)
+	{
+		$routes = $this->getCollector();
+		$routes->setAutoRoute(false);
+		$routes->setDefaultNamespace($namespace);
+		$routes->get('/product', 'Product');
+
+		$router = new Router($routes, Services::request());
+		$router->handle('/product');
+
+		$this->assertEquals('\App\\Controllers\\Product', $router->controllerName());
 	}
 
 }

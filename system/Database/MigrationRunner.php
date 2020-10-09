@@ -7,7 +7,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -38,10 +38,11 @@
 
 namespace CodeIgniter\Database;
 
-use Config\Services;
 use CodeIgniter\CLI\CLI;
-use CodeIgniter\Config\BaseConfig;
+use CodeIgniter\Events\Events;
 use CodeIgniter\Exceptions\ConfigException;
+use Config\Migrations as MigrationsConfig;
+use Config\Services;
 
 /**
  * Class MigrationRunner
@@ -66,7 +67,7 @@ class MigrationRunner
 	/**
 	 * The Namespace  where migrations can be found.
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	protected $namespace;
 
@@ -132,7 +133,7 @@ class MigrationRunner
 	/**
 	 * The database Group filter.
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	protected $groupFilter;
 
@@ -153,12 +154,12 @@ class MigrationRunner
 	 * - existing connection instance
 	 * - array of database configuration values
 	 *
-	 * @param BaseConfig                                             $config
+	 * @param MigrationsConfig                                       $config
 	 * @param \CodeIgniter\Database\ConnectionInterface|array|string $db
 	 *
 	 * @throws ConfigException
 	 */
-	public function __construct(BaseConfig $config, $db = null)
+	public function __construct(MigrationsConfig $config, $db = null)
 	{
 		$this->enabled = $config->enabled ?? false;
 		$this->table   = $config->table ?? 'migrations';
@@ -246,6 +247,10 @@ class MigrationRunner
 			}
 		}
 
+		$data           = get_object_vars($this);
+		$data['method'] = 'latest';
+		Events::trigger('migrate', $data);
+
 		return true;
 	}
 
@@ -293,7 +298,7 @@ class MigrationRunner
 		}
 
 		// Make sure $targetBatch is found
-		if ($targetBatch !== 0 && ! in_array($targetBatch, $batches))
+		if ($targetBatch !== 0 && ! in_array($targetBatch, $batches, true))
 		{
 			$message = lang('Migrations.batchNotFound') . $targetBatch;
 
@@ -304,6 +309,9 @@ class MigrationRunner
 			}
 			throw new \RuntimeException($message);
 		}
+
+		// Save the namespace to restore it after loading migrations
+		$tmpNamespace = $this->namespace;
 
 		// Get all migrations
 		$this->namespace = null;
@@ -365,6 +373,13 @@ class MigrationRunner
 				throw new \RuntimeException($message);
 			}
 		}
+
+		$data           = get_object_vars($this);
+		$data['method'] = 'regress';
+		Events::trigger('migrate', $data);
+
+		// Restore the namespace
+		$this->namespace = $tmpNamespace;
 
 		return true;
 	}
@@ -676,7 +691,7 @@ class MigrationRunner
 	 * Uses the non-repeatable portions of a migration or history
 	 * to create a sortable unique key
 	 *
-	 * @param object $migration or $history
+	 * @param object $object migration or $history
 	 *
 	 * @return string
 	 */
@@ -716,7 +731,7 @@ class MigrationRunner
 	/**
 	 * Truncates the history table.
 	 *
-	 * @return boolean
+	 * @return void
 	 */
 	public function clearHistory()
 	{
@@ -761,7 +776,7 @@ class MigrationRunner
 	/**
 	 * Removes a single history
 	 *
-	 * @param string $version
+	 * @param object $history
 	 *
 	 * @return void
 	 */
@@ -802,7 +817,7 @@ class MigrationRunner
 						  ->orderBy('id', 'ASC')
 						  ->get();
 
-		return $query ? $query->getResultObject() : [];
+		return ! empty($query) ? $query->getResultObject() : [];
 	}
 
 	//--------------------------------------------------------------------
@@ -823,7 +838,7 @@ class MigrationRunner
 						  ->orderBy('id', $order)
 						  ->get();
 
-		return $query ? $query->getResultObject() : [];
+		return ! empty($query) ? $query->getResultObject() : [];
 	}
 
 	//--------------------------------------------------------------------
@@ -844,7 +859,7 @@ class MigrationRunner
 						  ->get()
 						  ->getResultArray();
 
-		return array_column($batches, 'batch');
+		return array_map('intval', array_column($batches, 'batch'));
 	}
 
 	//--------------------------------------------------------------------
@@ -886,7 +901,7 @@ class MigrationRunner
 		if ($batch < 0)
 		{
 			$batches = $this->getBatches();
-			$batch   = $batches[count($batches) - 1 + $targetBatch] ?? 0;
+			$batch   = $batches[count($batches) - 1] ?? 0;
 		}
 
 		$migration = $this->db->table($this->table)
@@ -915,7 +930,7 @@ class MigrationRunner
 		if ($batch < 0)
 		{
 			$batches = $this->getBatches();
-			$batch   = $batches[count($batches) - 1 + $targetBatch] ?? 0;
+			$batch   = $batches[count($batches) - 1] ?? 0;
 		}
 
 		$migration = $this->db->table($this->table)
@@ -991,8 +1006,8 @@ class MigrationRunner
 	/**
 	 * Handles the actual running of a migration.
 	 *
-	 * @param $direction   "up" or "down"
-	 * @param $migration   The migration to run
+	 * @param string $direction "up" or "down"
+	 * @param object $migration The migration to run
 	 *
 	 * @return boolean
 	 */
@@ -1020,6 +1035,15 @@ class MigrationRunner
 		$instance = new $class();
 		// Determine DBGroup to use
 		$group = $instance->getDBGroup() ?? config('Database')->defaultGroup;
+
+		// Skip tests db group when not running in testing environment
+		if (ENVIRONMENT !== 'testing' && $group === 'tests' && $this->groupFilter !== 'tests')
+		{
+			// @codeCoverageIgnoreStart
+			$this->groupSkip = true;
+			return true;
+			// @codeCoverageIgnoreEnd
+		}
 
 		// Skip migration if group filtering was set
 		if ($direction === 'up' && ! is_null($this->groupFilter) && $this->groupFilter !== $group)

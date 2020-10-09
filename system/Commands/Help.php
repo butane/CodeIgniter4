@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -100,21 +100,22 @@ class Help extends BaseCommand
 	//--------------------------------------------------------------------
 
 	/**
-	 * Displays the help for the spark cli script itself.
+	 * Displays the help for spark commands.
 	 *
 	 * @param array $params
 	 */
 	public function run(array $params)
 	{
-		$command = array_shift($params);
-		if (is_null($command))
+		$command  = array_shift($params);
+		$command  = $command ?? 'help';
+		$commands = $this->commands->getCommands();
+
+		if (! $this->commands->verifyCommand($command, $commands))
 		{
-			$command = 'help';
+			return;
 		}
 
-		$commands = $this->commands->getCommands();
-		$class    = new $commands[$command]['class']($this->logger, $this->commands);
-
+		$class = new $commands[$command]['class']($this->logger, $this->commands);
 		$class->showHelp();
 	}
 

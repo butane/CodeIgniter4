@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -39,7 +39,7 @@
 
 namespace CodeIgniter\Session\Handlers;
 
-use CodeIgniter\Config\BaseConfig;
+use Config\App as AppConfig;
 use Psr\Log\LoggerAwareTrait;
 
 /**
@@ -53,7 +53,7 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	/**
 	 * The Data fingerprint.
 	 *
-	 * @var boolean
+	 * @var string
 	 */
 	protected $fingerprint;
 
@@ -117,7 +117,7 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	 * The 'save path' for the session
 	 * varies between
 	 *
-	 * @var string
+	 * @var string|array
 	 */
 	protected $savePath;
 
@@ -133,10 +133,10 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	/**
 	 * Constructor
 	 *
-	 * @param BaseConfig $config
-	 * @param string     $ipAddress
+	 * @param AppConfig $config
+	 * @param string    $ipAddress
 	 */
-	public function __construct($config, string $ipAddress)
+	public function __construct(AppConfig $config, string $ipAddress)
 	{
 		$this->cookiePrefix = $config->cookiePrefix;
 		$this->cookieDomain = $config->cookieDomain;
@@ -159,7 +159,7 @@ abstract class BaseHandler implements \SessionHandlerInterface
 	protected function destroyCookie(): bool
 	{
 		return setcookie(
-				$this->cookieName, null, 1, $this->cookiePath, $this->cookieDomain, $this->cookieSecure, true
+				$this->cookieName, '', 1, $this->cookiePath, $this->cookieDomain, $this->cookieSecure, true
 		);
 	}
 

@@ -9,7 +9,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -160,6 +160,7 @@ class UploadedFile extends File implements UploadedFileInterface
 	 */
 	public function move(string $targetPath, string $name = null, bool $overwrite = false)
 	{
+		$targetPath = rtrim($targetPath, '/') . '/';
 		$targetPath = $this->setPath($targetPath); //set the target path
 
 		if ($this->hasMoved)
@@ -172,7 +173,6 @@ class UploadedFile extends File implements UploadedFileInterface
 			throw HTTPException::forInvalidFile();
 		}
 
-		$targetPath  = rtrim($targetPath, '/') . '/';
 		$name        = is_null($name) ? $this->getName() : $name;
 		$destination = $overwrite ? $targetPath . $name : $this->getDestination($targetPath . $name);
 
@@ -182,8 +182,9 @@ class UploadedFile extends File implements UploadedFileInterface
 		}
 		catch (Exception $e)
 		{
-			$error = error_get_last();
-			throw HTTPException::forMoveFailed(basename($this->path), $targetPath, strip_tags($error['message']));
+			$error   = error_get_last();
+			$message = isset($error['message']) ? strip_tags($error['message']) : '';
+			throw HTTPException::forMoveFailed(basename($this->path), $targetPath, $message);
 		}
 
 		@chmod($targetPath, 0777 & ~umask());
@@ -251,12 +252,7 @@ class UploadedFile extends File implements UploadedFileInterface
 	 */
 	public function getError(): int
 	{
-		if (is_null($this->error))
-		{
-			return UPLOAD_ERR_OK;
-		}
-
-		return $this->error;
+		return $this->error ?? UPLOAD_ERR_OK;
 	}
 
 	//--------------------------------------------------------------------
@@ -279,7 +275,7 @@ class UploadedFile extends File implements UploadedFileInterface
 			UPLOAD_ERR_EXTENSION  => lang('HTTP.uploadErrExtension'),
 		];
 
-		$error = is_null($this->error) ? UPLOAD_ERR_OK : $this->error;
+		$error = $this->error ?? UPLOAD_ERR_OK;
 
 		return sprintf($errors[$error] ?? lang('HTTP.uploadErrUnknown'), $this->getName());
 	}
@@ -355,7 +351,7 @@ class UploadedFile extends File implements UploadedFileInterface
 	/**
 	 * Attempts to determine the best file extension.
 	 *
-	 * @return string|null
+	 * @return string
 	 */
 	public function guessExtension(): string
 	{

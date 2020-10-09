@@ -1,4 +1,5 @@
 <?php
+
 /**
  * CodeIgniter
  *
@@ -7,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -79,7 +80,7 @@ if (! function_exists('_array_search_dot'))
 			? array_shift($indexes)
 			: null;
 
-		if (empty($currentIndex) || (! isset($array[$currentIndex]) && $currentIndex !== '*'))
+		if ((empty($currentIndex)  && intval($currentIndex) !== 0) || (! isset($array[$currentIndex]) && $currentIndex !== '*'))
 		{
 			return null;
 		}
@@ -88,21 +89,18 @@ if (! function_exists('_array_search_dot'))
 		if ($currentIndex === '*')
 		{
 			// If $array has more than 1 item, we have to loop over each.
-			if (is_array($array))
+			foreach ($array as $value)
 			{
-				foreach ($array as $key => $value)
+				$answer = _array_search_dot($indexes, $value);
+
+				if ($answer !== null)
 				{
-					$answer = _array_search_dot($indexes, $value);
-
-					if ($answer !== null)
-					{
-						return $answer;
-					}
+					return $answer;
 				}
-
-				// Still here after searching all child nodes?
-				return null;
 			}
+
+			// Still here after searching all child nodes?
+			return null;
 		}
 
 		// If this is the last index, make sure to return it now,
@@ -120,5 +118,37 @@ if (! function_exists('_array_search_dot'))
 
 		// Otherwise we've found our match!
 		return $array[$currentIndex];
+	}
+}
+
+if (! function_exists('array_deep_search'))
+{
+	/**
+	 * Returns the value of an element at a key in an array of uncertain depth.
+	 *
+	 * @param mixed $key
+	 * @param array $array
+	 *
+	 * @return mixed|null
+	 */
+	function array_deep_search($key, array $array)
+	{
+		if (isset($array[$key]))
+		{
+			return $array[$key];
+		}
+
+		foreach ($array as $value)
+		{
+			if (is_array($value))
+			{
+				if ($result = array_deep_search($key, $value))
+				{
+					return $result;
+				}
+			}
+		}
+
+		return null;
 	}
 }

@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -67,7 +67,7 @@ class Forge extends \CodeIgniter\Database\Forge
 	/**
 	 * Constructor.
 	 *
-	 * @param $db ConnectionInterface
+	 * @param ConnectionInterface $db
 	 */
 	public function __construct(ConnectionInterface $db)
 	{
@@ -85,7 +85,7 @@ class Forge extends \CodeIgniter\Database\Forge
 	/**
 	 * Create database
 	 *
-	 * @param string $dbName
+	 * @param string  $dbName
 	 * @param boolean $ifNotExists Whether to add IF NOT EXISTS condition
 	 *
 	 * @return boolean
@@ -145,19 +145,18 @@ class Forge extends \CodeIgniter\Database\Forge
 	}
 
 	//--------------------------------------------------------------------
-
 	/**
 	 * ALTER TABLE
 	 *
-	 * @param string $alter_type ALTER type
-	 * @param string $table      Table name
-	 * @param mixed  $field      Column definition
+	 * @param string $alterType ALTER type
+	 * @param string $table     Table name
+	 * @param mixed  $field     Column definition
 	 *
-	 * @return string|array
+	 * @return string|array|null
 	 */
-	protected function _alterTable(string $alter_type, string $table, $field)
+	protected function _alterTable(string $alterType, string $table, $field)
 	{
-		switch ($alter_type)
+		switch ($alterType)
 		{
 			case 'DROP':
 				$sqlTable = new Table($this->db, $this);
@@ -167,7 +166,6 @@ class Forge extends \CodeIgniter\Database\Forge
 					->run();
 
 				return '';
-				break;
 			case 'CHANGE':
 				$sqlTable = new Table($this->db, $this);
 
@@ -176,9 +174,8 @@ class Forge extends \CodeIgniter\Database\Forge
 						 ->run();
 
 				return null;
-				break;
 			default:
-				return parent::_alterTable($alter_type, $table, $field);
+				return parent::_alterTable($alterType, $table, $field);
 		}
 	}
 
@@ -236,7 +233,7 @@ class Forge extends \CodeIgniter\Database\Forge
 				continue;
 			}
 
-			if (in_array($i, $this->uniqueKeys))
+			if (in_array($i, $this->uniqueKeys, true))
 			{
 				$sqls[] = 'CREATE UNIQUE INDEX ' . $this->db->escapeIdentifiers($table . '_' . implode('_', $this->keys[$i]))
 						  . ' ON ' . $this->db->escapeIdentifiers($table)
@@ -258,7 +255,7 @@ class Forge extends \CodeIgniter\Database\Forge
 	 *
 	 * Performs a data type mapping between different databases.
 	 *
-	 * @param array &$attributes
+	 * @param array $attributes
 	 *
 	 * @return void
 	 */
@@ -280,8 +277,8 @@ class Forge extends \CodeIgniter\Database\Forge
 	/**
 	 * Field attribute AUTO_INCREMENT
 	 *
-	 * @param array &$attributes
-	 * @param array &$field
+	 * @param array $attributes
+	 * @param array $field
 	 *
 	 * @return void
 	 */

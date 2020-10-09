@@ -1,4 +1,5 @@
 <?php
+
 /**
  * CodeIgniter
  *
@@ -7,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT    MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -106,11 +107,12 @@ if (! function_exists('base_url'))
 		{
 			$uri = implode('/', $uri);
 		}
+		$uri = trim($uri, '/');
 
 		// We should be using the configured baseURL that the user set;
 		// otherwise get rid of the path, because we have
 		// no way of knowing the intent...
-		$config = \CodeIgniter\Config\Services::request()->config;
+		$config = \Config\Services::request()->config;
 
 		// If baseUrl does not have a trailing slash it won't resolve
 		// correctly for users hosting in a subfolder.
@@ -129,7 +131,7 @@ if (! function_exists('base_url'))
 
 		// If the scheme wasn't provided, check to
 		// see if it was a secure request
-		if (empty($protocol) && \CodeIgniter\Config\Services::request()->isSecure())
+		if (empty($protocol) && \Config\Services::request()->isSecure())
 		{
 			$protocol = 'https';
 		}
@@ -159,25 +161,11 @@ if (! function_exists('current_url'))
 	 */
 	function current_url(bool $returnObject = false)
 	{
-		$uri = clone service('request')->uri;
-
-		// If hosted in a sub-folder, we will have additional
-		// segments that show up prior to the URI path we just
-		// grabbed from the request, so add it on if necessary.
-		$baseUri = new \CodeIgniter\HTTP\URI(config('App')->baseURL);
-
-		if (! empty($baseUri->getPath()))
-		{
-			$path = rtrim($baseUri->getPath(), '/ ') . '/' . $uri->getPath();
-
-			$uri->setPath($path);
-		}
+		$uri = clone \Config\Services::request()->uri;
 
 		// Since we're basing off of the IncomingRequest URI,
 		// we are guaranteed to have a host based on our own configs.
-		return $returnObject
-			? $uri
-			: (string)$uri->setQuery('');
+		return $returnObject ? $uri : (string) $uri->setQuery('');
 	}
 }
 
@@ -200,7 +188,7 @@ if (! function_exists('previous_url'))
 		// Grab from the session first, if we have it,
 		// since it's more reliable and safer.
 		// Otherwise, grab a sanitized version from $_SERVER.
-		$referer = $_SESSION['_ci_previous_url'] ?? \CodeIgniter\Config\Services::request()->getServer('HTTP_REFERER', FILTER_SANITIZE_URL);
+		$referer = $_SESSION['_ci_previous_url'] ?? \Config\Services::request()->getServer('HTTP_REFERER', FILTER_SANITIZE_URL);
 
 		$referer = $referer ?? site_url('/');
 
@@ -217,11 +205,26 @@ if (! function_exists('uri_string'))
 	 *
 	 * Returns the path part of the current URL
 	 *
+	 * @param boolean $relative Whether the resulting path should be relative to baseURL
+	 *
 	 * @return string
 	 */
-	function uri_string(): string
+	function uri_string(bool $relative = false): string
 	{
-		return \CodeIgniter\Config\Services::request()->uri->getPath();
+		$request = \Config\Services::request();
+		$uri     = $request->uri;
+
+		// An absolute path is equivalent to getPath()
+		if (! $relative)
+		{
+			return $uri->getPath();
+		}
+
+		// Remove the baseURL from the entire URL
+		$url     = (string) $uri->__toString();
+		$baseURL = rtrim($request->config->baseURL, '/ ') . '/';
+
+		return substr($url, strlen($baseURL));
 	}
 }
 
@@ -267,13 +270,13 @@ if (! function_exists('anchor'))
 		// use alternate config if provided, else default one
 		$config = $altConfig ?? config(\Config\App::class);
 
-		$site_url = is_array($uri) ? site_url($uri, null, $config) : (preg_match('#^(\w+:)?//#i', $uri) ? $uri : site_url($uri, null, $config));
+		$siteUrl = is_array($uri) ? site_url($uri, null, $config) : (preg_match('#^(\w+:)?//#i', $uri) ? $uri : site_url($uri, null, $config));
 		// eliminate trailing slash
-		$site_url = rtrim($site_url, '/');
+		$siteUrl = rtrim($siteUrl, '/');
 
 		if ($title === '')
 		{
-			$title = $site_url;
+			$title = $siteUrl;
 		}
 
 		if ($attributes !== '')
@@ -281,7 +284,7 @@ if (! function_exists('anchor'))
 			$attributes = stringify_attributes($attributes);
 		}
 
-		return '<a href="' . $site_url . '"' . $attributes . '>' . $title . '</a>';
+		return '<a href="' . $siteUrl . '"' . $attributes . '>' . $title . '</a>';
 	}
 }
 
@@ -307,17 +310,17 @@ if (! function_exists('anchor_popup'))
 		// use alternate config if provided, else default one
 		$config = $altConfig ?? config(\Config\App::class);
 
-		$site_url = preg_match('#^(\w+:)?//#i', $uri) ? $uri : site_url($uri, '', $config);
-		$site_url = rtrim($site_url, '/');
+		$siteUrl = preg_match('#^(\w+:)?//#i', $uri) ? $uri : site_url($uri, '', $config);
+		$siteUrl = rtrim($siteUrl, '/');
 
 		if ($title === '')
 		{
-			$title = $site_url;
+			$title = $siteUrl;
 		}
 
 		if ($attributes === false)
 		{
-			return '<a href="' . $site_url . '" onclick="window.open(\'' . $site_url . "', '_blank'); return false;\">" . $title . '</a>';
+			return '<a href="' . $siteUrl . '" onclick="window.open(\'' . $siteUrl . "', '_blank'); return false;\">" . $title . '</a>';
 		}
 
 		if (! is_array($attributes))
@@ -325,16 +328,16 @@ if (! function_exists('anchor_popup'))
 			$attributes = [$attributes];
 
 			// Ref: http://www.w3schools.com/jsref/met_win_open.asp
-			$window_name = '_blank';
+			$windowName = '_blank';
 		}
 		elseif (! empty($attributes['window_name']))
 		{
-			$window_name = $attributes['window_name'];
+			$windowName = $attributes['window_name'];
 			unset($attributes['window_name']);
 		}
 		else
 		{
-			$window_name = '_blank';
+			$windowName = '_blank';
 		}
 
 		foreach (['width' => '800', 'height' => '600', 'scrollbars' => 'yes', 'menubar' => 'no', 'status' => 'yes', 'resizable' => 'yes', 'screenx' => '0', 'screeny' => '0'] as $key => $val)
@@ -345,8 +348,8 @@ if (! function_exists('anchor_popup'))
 
 		$attributes = stringify_attributes($attributes);
 
-		return '<a href="' . $site_url
-				. '" onclick="window.open(\'' . $site_url . "', '" . $window_name . "', '" . stringify_attributes($atts, true) . "'); return false;\""
+		return '<a href="' . $siteUrl
+				. '" onclick="window.open(\'' . $siteUrl . "', '" . $windowName . "', '" . stringify_attributes($atts, true) . "'); return false;\""
 				. $attributes . '>' . $title . '</a>';
 	}
 }
@@ -448,7 +451,7 @@ if (! function_exists('safe_mailto'))
 				}
 
 				$temp[] = $ordinal;
-				if (count($temp) === $count)
+				if (count($temp) === $count) // @phpstan-ignore-line
 				{
 					$number = ($count === 3) ? (($temp[0] % 16) * 4096) + (($temp[1] % 64) * 64) + ($temp[2] % 64) : (($temp[0] % 32) * 64) + ($temp[1] % 64);
 					$x[]    = '|' . $number;
@@ -474,13 +477,11 @@ if (! function_exists('safe_mailto'))
 			$output .= 'l[' . $i . "] = '" . $x[$i] . "';";
 		}
 
-		$output .= 'for (var i = l.length-1; i >= 0; i=i-1) {'
+		return $output . ('for (var i = l.length-1; i >= 0; i=i-1) {'
 				. "if (l[i].substring(0, 1) === '|') document.write(\"&#\"+unescape(l[i].substring(1))+\";\");"
 				. 'else document.write(unescape(l[i]));'
 				. '}'
-				. '</script>';
-
-		return $output;
+				. '</script>');
 	}
 }
 
@@ -590,19 +591,18 @@ if (! function_exists('url_title'))
 	 */
 	function url_title(string $str, string $separator = '-', bool $lowercase = false): string
 	{
-		$q_separator = preg_quote($separator, '#');
+		$qSeparator = preg_quote($separator, '#');
 
 		$trans = [
-			'&.+?;'                   => '',
-			'[^\w\d _-]'              => '',
-			'\s+'                     => $separator,
-			'(' . $q_separator . ')+' => $separator,
+			'&.+?;'                  => '',
+			'[^\w\d\pL\pM _-]'       => '',
+			'\s+'                    => $separator,
+			'(' . $qSeparator . ')+' => $separator,
 		];
 
 		$str = strip_tags($str);
 		foreach ($trans as $key => $val)
 		{
-			//			$str = preg_replace('#'.$key.'#i'.( UTF8_ENABLED ? 'u' : ''), $val, $str);
 			$str = preg_replace('#' . $key . '#iu', $val, $str);
 		}
 
@@ -615,4 +615,83 @@ if (! function_exists('url_title'))
 	}
 }
 
+// ------------------------------------------------------------------------
+
+if (! function_exists('mb_url_title'))
+{
+	/**
+	 * Create URL Title that takes into account accented characters
+	 *
+	 * Takes a "title" string as input and creates a
+	 * human-friendly URL string with a "separator" string
+	 * as the word separator.
+	 *
+	 * @param  string  $str       Input string
+	 * @param  string  $separator Word separator (usually '-' or '_')
+	 * @param  boolean $lowercase Whether to transform the output string to lowercase
+	 * @return string
+	 */
+	function mb_url_title(string $str, string $separator = '-', bool $lowercase = false): string
+	{
+		helper('text');
+
+		return url_title(convert_accented_characters($str), $separator, $lowercase);
+	}
+}
+
 //--------------------------------------------------------------------
+
+if (! function_exists('url_to'))
+{
+	/**
+	 * Get the full, absolute URL to a controller method
+	 * (with additional arguments)
+	 *
+	 * @param string $controller
+	 * @param mixed  ...$args
+	 *
+	 * @throws \CodeIgniter\Router\Exceptions\RouterException
+	 *
+	 * @return string
+	 */
+	function url_to(string $controller, ...$args): string
+	{
+		if (! $route = route_to($controller, ...$args))
+		{
+			$explode = explode('::', $controller);
+
+			if (isset($explode[1]))
+			{
+				throw new \CodeIgniter\Router\Exceptions\RouterException(lang('HTTP.controllerNotFound', [$explode[0], $explode[1]]));
+			}
+
+			throw new \CodeIgniter\Router\Exceptions\RouterException(lang('HTTP.invalidRoute', [$controller]));
+		}
+
+		return site_url($route);
+	}
+}
+
+if (! function_exists('url_is'))
+{
+	/**
+	 * Determines if current url path contains
+	 * the given path. It may contain a wildcard (*)
+	 * which will allow any valid character.
+	 *
+	 * Example:
+	 *   if (url_is('admin*)) ...
+	 *
+	 * @param string $path
+	 *
+	 * @return boolean
+	 */
+	function url_is(string $path): bool
+	{
+		// Setup our regex to allow wildcards
+		$path        = '/' . trim(str_replace('*', '(\S)*', $path), '/ ');
+		$currentPath = '/' . trim(uri_string(true), '/ ');
+
+		return (bool)preg_match("|^{$path}$|", $currentPath, $matches);
+	}
+}

@@ -5,7 +5,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -24,9 +24,10 @@ return [
 
 	// Rule Messages
    'alpha'                 => 'The {field} field may only contain alphabetical characters.',
-   'alpha_dash'            => 'The {field} field may only contain alpha-numeric characters, underscores, and dashes.',
-   'alpha_numeric'         => 'The {field} field may only contain alpha-numeric characters.',
-   'alpha_numeric_space'   => 'The {field} field may only contain alpha-numeric characters and spaces.',
+   'alpha_dash'            => 'The {field} field may only contain alphanumeric, underscore, and dash characters.',
+   'alpha_numeric'         => 'The {field} field may only contain alphanumeric characters.',
+   'alpha_numeric_punct'   => 'The {field} field may contain only alphanumeric characters, spaces, and  ~ ! # $ % & * - _ + = | : . characters.',
+   'alpha_numeric_space'   => 'The {field} field may only contain alphanumeric and space characters.',
    'alpha_space'           => 'The {field} field may only contain alphabetical characters and spaces.',
    'decimal'               => 'The {field} field must contain a decimal number.',
    'differs'               => 'The {field} field must differ from the {param} field.',
@@ -47,11 +48,13 @@ return [
    'max_length'            => 'The {field} field cannot exceed {param} characters in length.',
    'min_length'            => 'The {field} field must be at least {param} characters in length.',
    'not_equals'            => 'The {field} field cannot be: {param}.',
+   'not_in_list'           => 'The {field} field must not be one of: {param}.',
    'numeric'               => 'The {field} field must contain only numbers.',
    'regex_match'           => 'The {field} field is not in the correct format.',
    'required'              => 'The {field} field is required.',
    'required_with'         => 'The {field} field is required when {param} is present.',
    'required_without'      => 'The {field} field is required when {param} is not present.',
+   'string'                => 'The {field} field must be a valid string.',
    'timezone'              => 'The {field} field must be a valid timezone.',
    'valid_base64'          => 'The {field} field must be a valid base64 string.',
    'valid_email'           => 'The {field} field must contain a valid email address.',

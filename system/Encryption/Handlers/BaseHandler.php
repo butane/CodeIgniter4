@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2017 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,55 +39,47 @@
 
 namespace CodeIgniter\Encryption\Handlers;
 
-use CodeIgniter\Config\BaseConfig;
+use CodeIgniter\Encryption\EncrypterInterface;
+use Config\Encryption;
 
 /**
  * Base class for encryption handling
  */
-abstract class BaseHandler implements \CodeIgniter\Encryption\EncrypterInterface
+abstract class BaseHandler implements EncrypterInterface
 {
-
-	/**
-	 * Configuraiton passed from encryption manager
-	 *
-	 * @var string
-	 */
-	protected $config;
-
 	/**
 	 * Logger instance to record error messages and warnings.
 	 *
-	 * @var \PSR\Log\LoggerInterface
+	 * @var \Psr\Log\LoggerInterface
 	 */
 	protected $logger;
-
-	//--------------------------------------------------------------------
 
 	/**
 	 * Constructor
 	 *
-	 * @param BaseConfig $config
+	 * @param \Config\Encryption|null $config
 	 */
-	public function __construct(BaseConfig $config = null)
+	public function __construct(Encryption $config = null)
 	{
-		if (empty($config))
-		{
-			$config = new \Config\Encryption();
-		}
+		$config = $config ?? config('Encryption');
 
 		// make the parameters conveniently accessible
-		foreach ($config as $pkey => $value)
+		foreach (get_object_vars($config) as $key => $value)
 		{
-			$this->$pkey = $value;
+			if (property_exists($this, $key))
+			{
+				$this->{$key} = $value;
+			}
 		}
 	}
 
 	/**
 	 * Byte-safe substr()
 	 *
-	 * @param  string  $str
-	 * @param  integer $start
-	 * @param  integer $length
+	 * @param string  $str
+	 * @param integer $start
+	 * @param integer $length
+	 *
 	 * @return string
 	 */
 	protected static function substr($str, $start, $length = null)
@@ -103,7 +95,7 @@ abstract class BaseHandler implements \CodeIgniter\Encryption\EncrypterInterface
 	 */
 	public function __get($key)
 	{
-		if (in_array($key, ['cipher', 'key'], true))
+		if ($this->__isset($key))
 		{
 			return $this->{$key};
 		}
@@ -119,6 +111,6 @@ abstract class BaseHandler implements \CodeIgniter\Encryption\EncrypterInterface
 	 */
 	public function __isset($key): bool
 	{
-		return in_array($key, ['cipher', 'key'], true);
+		return property_exists($this, $key);
 	}
 }

@@ -7,7 +7,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -40,6 +40,7 @@ namespace CodeIgniter\View;
 
 use CodeIgniter\Cache\CacheInterface;
 use CodeIgniter\View\Exceptions\ViewException;
+use Config\Services;
 use ReflectionMethod;
 
 /**
@@ -109,7 +110,9 @@ class Cell
 		list($class, $method) = $this->determineClass($library);
 
 		// Is it cached?
-		$cacheName = ! empty($cacheName) ? $cacheName : $class . $method . md5(serialize($params));
+		$cacheName = ! empty($cacheName)
+			? $cacheName
+			: str_replace(['\\', '/'], '', $class) . $method . md5(serialize($params));
 
 		if (! empty($this->cache) && $output = $this->cache->get($cacheName))
 		{
@@ -118,6 +121,11 @@ class Cell
 
 		// Not cached - so grab it...
 		$instance = new $class();
+
+		if (method_exists($instance, 'initController'))
+		{
+			$instance->initController(Services::request(), Services::response(), Services::logger());
+		}
 
 		if (! method_exists($instance, $method))
 		{
@@ -149,12 +157,12 @@ class Cell
 		}
 		else
 		{
-			$fireArgs      = [];
-			$method_params = [];
+			$fireArgs     = [];
+			$methodParams = [];
 
 			foreach ($refParams as $arg)
 			{
-				$method_params[$arg->name] = true;
+				$methodParams[$arg->name] = true;
 				if (array_key_exists($arg->name, $paramArray))
 				{
 					$fireArgs[$arg->name] = $paramArray[$arg->name];
@@ -163,7 +171,7 @@ class Cell
 
 			foreach ($paramArray as $key => $val)
 			{
-				if (! isset($method_params[$key]))
+				if (! isset($methodParams[$key]))
 				{
 					throw ViewException::forInvalidCellParameter($key);
 				}
@@ -186,7 +194,7 @@ class Cell
 	 * If a string, it should be in the format "key1=value key2=value".
 	 * It will be split and returned as an array.
 	 *
-	 * @param $params
+	 * @param mixed $params
 	 *
 	 * @return array|null
 	 */
@@ -199,8 +207,8 @@ class Cell
 
 		if (is_string($params))
 		{
-			$new_params = [];
-			$separator  = ' ';
+			$newParams = [];
+			$separator = ' ';
 
 			if (strpos($params, ',') !== false)
 			{
@@ -214,14 +222,14 @@ class Cell
 			{
 				if (! empty($p))
 				{
-					list($key, $val)        = explode('=', $p);
-					$new_params[trim($key)] = trim($val, ', ');
+					list($key, $val)       = explode('=', $p);
+					$newParams[trim($key)] = trim($val, ', ');
 				}
 			}
 
-			$params = $new_params;
+			$params = $newParams;
 
-			unset($new_params);
+			unset($newParams);
 		}
 
 		if (is_array($params) && empty($params))

@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -77,7 +77,7 @@ class FileHandler extends BaseHandler implements HandlerInterface
 	{
 		parent::__construct($config);
 
-		$this->path = $config['path'] ?? WRITEPATH . 'logs/';
+		$this->path = empty($config['path']) ? WRITEPATH . 'logs/' : $config['path'];
 
 		$this->fileExtension = empty($config['fileExtension']) ? 'log' : $config['fileExtension'];
 		$this->fileExtension = ltrim($this->fileExtension, '.');
@@ -93,8 +93,8 @@ class FileHandler extends BaseHandler implements HandlerInterface
 	 * will stop. Any handlers that have not run, yet, will not
 	 * be run.
 	 *
-	 * @param $level
-	 * @param $message
+	 * @param string $level
+	 * @param string $message
 	 *
 	 * @return boolean
 	 * @throws \Exception
@@ -124,10 +124,10 @@ class FileHandler extends BaseHandler implements HandlerInterface
 		// Instantiating DateTime with microseconds appended to initial date is needed for proper support of this format
 		if (strpos($this->dateFormat, 'u') !== false)
 		{
-			$microtime_full  = microtime(true);
-			$microtime_short = sprintf('%06d', ($microtime_full - floor($microtime_full)) * 1000000);
-			$date            = new \DateTime(date('Y-m-d H:i:s.' . $microtime_short, $microtime_full));
-			$date            = $date->format($this->dateFormat);
+			$microtimeFull  = microtime(true);
+			$microtimeShort = sprintf('%06d', ($microtimeFull - floor($microtimeFull)) * 1000000);
+			$date           = new \DateTime(date('Y-m-d H:i:s.' . $microtimeShort, (int) $microtimeFull));
+			$date           = $date->format($this->dateFormat);
 		}
 		else
 		{
@@ -157,7 +157,7 @@ class FileHandler extends BaseHandler implements HandlerInterface
 			chmod($filepath, $this->filePermissions);
 		}
 
-		return is_int($result);
+		return is_int($result); // @phpstan-ignore-line
 	}
 
 	//--------------------------------------------------------------------

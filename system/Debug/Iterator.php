@@ -7,7 +7,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -99,21 +99,21 @@ class Iterator
 			// clear memory before start
 			gc_collect_cycles();
 
-			$start     = microtime(true);
-			$start_mem = $max_memory = memory_get_usage(true);
+			$start    = microtime(true);
+			$startMem = $maxMemory = memory_get_usage(true);
 
 			for ($i = 0; $i < $iterations; $i ++)
 			{
 				$result = $test();
 
-				$max_memory = max($max_memory, memory_get_usage(true));
+				$maxMemory = max($maxMemory, memory_get_usage(true));
 
 				unset($result);
 			}
 
 			$this->results[$name] = [
 				'time'   => microtime(true) - $start,
-				'memory' => $max_memory - $start_mem,
+				'memory' => $maxMemory - $startMem,
 				'n'      => $iterations,
 			];
 		}

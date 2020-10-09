@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -58,7 +58,7 @@ class DownloadResponse extends Message implements ResponseInterface
 	/**
 	 * Download for file
 	 *
-	 * @var File?
+	 * @var File|null
 	 */
 	private $file;
 
@@ -72,7 +72,7 @@ class DownloadResponse extends Message implements ResponseInterface
 	/**
 	 * Download for binary
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	private $binary;
 
@@ -163,7 +163,8 @@ class DownloadResponse extends Message implements ResponseInterface
 		{
 			return strlen($this->binary);
 		}
-		elseif ($this->file instanceof File)
+
+		if ($this->file instanceof File)
 		{
 			return $this->file->getSize();
 		}
@@ -181,9 +182,9 @@ class DownloadResponse extends Message implements ResponseInterface
 
 		if ($this->setMime === true)
 		{
-			if (($last_dot_position = strrpos($this->filename, '.')) !== false)
+			if (($lastDotPosition = strrpos($this->filename, '.')) !== false)
 			{
-				$mime    = Mimes::guessTypeFromExtension(substr($this->filename, $last_dot_position + 1));
+				$mime    = Mimes::guessTypeFromExtension(substr($this->filename, $lastDotPosition + 1));
 				$charset = $this->charset;
 			}
 		}
@@ -233,20 +234,20 @@ class DownloadResponse extends Message implements ResponseInterface
 	 */
 	private function getContentDisposition() : string
 	{
-		$download_filename = $this->getDownloadFileName();
+		$downloadFilename = $this->getDownloadFileName();
 
-		$utf8_filename = $download_filename;
+		$utf8Filename = $downloadFilename;
 
 		if (strtoupper($this->charset) !== 'UTF-8')
 		{
-			$utf8_filename = mb_convert_encoding($download_filename, 'UTF-8', $this->charset);
+			$utf8Filename = mb_convert_encoding($downloadFilename, 'UTF-8', $this->charset);
 		}
 
-		$result = sprintf('attachment; filename="%s"', $download_filename);
+		$result = sprintf('attachment; filename="%s"', $downloadFilename);
 
-		if (isset($utf8_filename))
+		if ($utf8Filename)
 		{
-			$result .= '; filename*=UTF-8\'\'' . rawurlencode($utf8_filename);
+			$result .= '; filename*=UTF-8\'\'' . rawurlencode($utf8Filename);
 		}
 
 		return $result;
@@ -263,7 +264,18 @@ class DownloadResponse extends Message implements ResponseInterface
 	//--------------------------------------------------------------------
 
 	/**
-	 * {@inheritDoc}
+	 * Return an instance with the specified status code and, optionally, reason phrase.
+	 *
+	 * If no reason phrase is specified, will default recommended reason phrase for
+	 * the response's status code.
+	 *
+	 * @see http://tools.ietf.org/html/rfc7231#section-6
+	 * @see http://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
+	 *
+	 * @param integer $code   The 3-digit integer result code to set.
+	 * @param string  $reason The reason phrase to use with the
+	 *                        provided status code; if none is provided, will
+	 *                        default to the IANA name.
 	 *
 	 * @throws DownloadException
 	 */
@@ -275,7 +287,12 @@ class DownloadResponse extends Message implements ResponseInterface
 	//--------------------------------------------------------------------
 
 	/**
-	 * {@inheritDoc}
+	 * Gets the response response phrase associated with the status code.
+	 *
+	 * @see http://tools.ietf.org/html/rfc7231#section-6
+	 * @see http://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
+	 *
+	 * @return string
 	 */
 	public function getReason(): string
 	{
@@ -288,7 +305,11 @@ class DownloadResponse extends Message implements ResponseInterface
 	//--------------------------------------------------------------------
 
 	/**
-	 * {@inheritDoc}
+	 * Sets the date header
+	 *
+	 * @param \DateTime $date
+	 *
+	 * @return ResponseInterface
 	 */
 	public function setDate(\DateTime $date)
 	{
@@ -302,7 +323,13 @@ class DownloadResponse extends Message implements ResponseInterface
 	//--------------------------------------------------------------------
 
 	/**
-	 * {@inheritDoc}
+	 * Sets the Content Type header for this response with the mime type
+	 * and, optionally, the charset.
+	 *
+	 * @param string $mime
+	 * @param string $charset
+	 *
+	 * @return ResponseInterface
 	 */
 	public function setContentType(string $mime, string $charset = 'UTF-8')
 	{
@@ -323,7 +350,8 @@ class DownloadResponse extends Message implements ResponseInterface
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Sets the appropriate headers to ensure this response
+	 * is not cached by the browsers.
 	 */
 	public function noCache(): self
 	{
@@ -337,7 +365,30 @@ class DownloadResponse extends Message implements ResponseInterface
 	//--------------------------------------------------------------------
 
 	/**
-	 * {@inheritDoc}
+	 * A shortcut method that allows the developer to set all of the
+	 * cache-control headers in one method call.
+	 *
+	 * The options array is used to provide the cache-control directives
+	 * for the header. It might look something like:
+	 *
+	 *      $options = [
+	 *          'max-age'  => 300,
+	 *          's-maxage' => 900
+	 *          'etag'     => 'abcde',
+	 *      ];
+	 *
+	 * Typical options are:
+	 *  - etag
+	 *  - last-modified
+	 *  - max-age
+	 *  - s-maxage
+	 *  - private
+	 *  - public
+	 *  - must-revalidate
+	 *  - proxy-revalidate
+	 *  - no-transform
+	 *
+	 * @param array $options
 	 *
 	 * @throws DownloadException
 	 */
@@ -430,11 +481,11 @@ class DownloadResponse extends Message implements ResponseInterface
 		// http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
 		if (! isset($this->headers['Date']))
 		{
-			$this->setDate(\DateTime::createFromFormat('U', time()));
+			$this->setDate(\DateTime::createFromFormat('U', (string) time()));
 		}
 
 		// HTTP Status
-		header(sprintf('HTTP/%s %s %s', $this->protocolVersion, $this->getStatusCode(), $this->getReason()), true,
+		header(sprintf('HTTP/%s %s %s', $this->getProtocolVersion(), $this->getStatusCode(), $this->getReason()), true,
 				$this->getStatusCode());
 
 		// Send all of our headers
@@ -459,7 +510,8 @@ class DownloadResponse extends Message implements ResponseInterface
 		{
 			return $this->sendBodyByBinary();
 		}
-		elseif ($this->file !== null)
+
+		if ($this->file !== null)
 		{
 			return $this->sendBodyByFilePath();
 		}
@@ -474,10 +526,10 @@ class DownloadResponse extends Message implements ResponseInterface
 	 */
 	private function sendBodyByFilePath()
 	{
-		$spl_file_object = $this->file->openFile('rb');
+		$splFileObject = $this->file->openFile('rb');
 
 		// Flush 1MB chunks of data
-		while (! $spl_file_object->eof() && ($data = $spl_file_object->fread(1048576)) !== false)
+		while (! $splFileObject->eof() && ($data = $splFileObject->fread(1048576)) !== false)
 		{
 			echo $data;
 		}

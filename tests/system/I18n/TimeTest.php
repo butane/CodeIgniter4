@@ -5,7 +5,7 @@ use DateTime;
 use DateTimeZone;
 use IntlDateFormatter;
 
-class TimeTest extends \CIUnitTestCase
+class TimeTest extends \CodeIgniter\Test\CIUnitTestCase
 {
 
 	protected function setUp(): void
@@ -239,9 +239,11 @@ class TimeTest extends \CIUnitTestCase
 
 	public function testGetYear()
 	{
-		$time = Time::parse('January 1, 2016');
+		$time  = Time::parse('January 1, 2016');
+		$time2 = Time::parse('December 31, 2019');
 
 		$this->assertEquals(2016, $time->year);
+		$this->assertEquals(2019, $time2->year);
 	}
 
 	public function testGetMonth()
@@ -433,11 +435,10 @@ class TimeTest extends \CIUnitTestCase
 		$this->assertEquals('2017-05-15 00:00:00', $time2->toDateTimeString());
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetDayOverMaxInCurrentMonth()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('Feb 02, 2009');
 		$time->setDay(29);
 	}
@@ -482,92 +483,82 @@ class TimeTest extends \CIUnitTestCase
 		$this->assertEquals('2017-05-10 00:00:20', $time2->toDateTimeString());
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetMonthTooSmall()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setMonth(-5);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetMonthTooBig()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setMonth(30);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetDayTooSmall()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setDay(-5);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetDayTooBig()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setDay(80);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetHourTooSmall()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setHour(-5);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetHourTooBig()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setHour(80);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetMinuteTooSmall()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setMinute(-5);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetMinuteTooBig()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setMinute(80);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetSecondTooSmall()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setSecond(-5);
 	}
 
-	/**
-	 * @expectedException \CodeIgniter\I18n\Exceptions\I18nException
-	 */
 	public function testSetSecondTooBig()
 	{
+		$this->expectException('CodeIgniter\I18n\Exceptions\I18nException');
+
 		$time = Time::parse('May 10, 2017');
 		$time->setSecond(80);
 	}
@@ -598,6 +589,12 @@ class TimeTest extends \CIUnitTestCase
 	{
 		$time = Time::parse('May 10, 2017', 'America/Chicago');
 		$this->assertEquals('2017-05-10', $time->toDateString());
+	}
+
+	public function testToFormattedDateString()
+	{
+		$time = Time::parse('2017-05-10', 'America/Chicago');
+		$this->assertEquals('May 10, 2017', $time->toFormattedDateString());
 	}
 
 	/**
@@ -918,7 +915,15 @@ class TimeTest extends \CIUnitTestCase
 		Time::setTestNow('March 10, 2017 12:00', 'America/Chicago');
 		$time = Time::parse('March 10, 2017 14:00', 'America/Chicago');
 
-		$this->assertEquals('2:00 pm', $time->humanize());
+		$this->assertEquals('in 2 hours', $time->humanize());
+	}
+
+	public function testHumanizeHoursAWhileAgo()
+	{
+		Time::setTestNow('March 10, 2017 12:00', 'America/Chicago');
+		$time = Time::parse('March 10, 2017 8:00', 'America/Chicago');
+
+		$this->assertEquals('4 hours ago', $time->humanize());
 	}
 
 	public function testHumanizeMinutesSingle()
@@ -977,6 +982,14 @@ class TimeTest extends \CIUnitTestCase
 		$this->assertEquals('Just now', $time->humanize());
 	}
 
+	public function testSetTimezoneDate()
+	{
+		$time  = Time::parse('13 May 2020 10:00', 'GMT');
+		$time2 = $time->setTimezone('GMT+8');
+		$this->assertEquals('2020-05-13 10:00:00', $time->toDateTimeString());
+		$this->assertEquals('2020-05-13 18:00:00', $time2->toDateTimeString());
+	}
+
 	//--------------------------------------------------------------------
 	// Missing tests
 
@@ -995,4 +1008,14 @@ class TimeTest extends \CIUnitTestCase
 		$this->assertNull($time->weekOfWeek);
 	}
 
+	public function testUnserializeTimeObject()
+	{
+		$time1     = new Time('August 28, 2020 10:04:00pm', 'Asia/Manila', 'en');
+		$timeCache = serialize($time1);
+		$time2     = unserialize($timeCache);
+
+		$this->assertInstanceOf(Time::class, $time2);
+		$this->assertTrue($time2->equals($time1));
+		$this->assertEquals($time1, $time2);
+	}
 }

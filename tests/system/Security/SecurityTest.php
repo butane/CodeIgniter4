@@ -1,19 +1,19 @@
 <?php namespace CodeIgniter\Security;
 
-use CodeIgniter\HTTP\URI;
-use CodeIgniter\HTTP\Request;
-use CodeIgniter\HTTP\UserAgent;
 use CodeIgniter\HTTP\IncomingRequest;
-use Tests\Support\Config\MockAppConfig;
+use CodeIgniter\HTTP\Request;
+use CodeIgniter\HTTP\URI;
+use CodeIgniter\HTTP\UserAgent;
 use CodeIgniter\Security\Exceptions\SecurityException;
-use Tests\Support\Security\MockSecurity;
+use CodeIgniter\Test\Mock\MockAppConfig;
+use CodeIgniter\Test\Mock\MockSecurity;
 
 //--------------------------------------------------------------------
 
 /**
  * @backupGlobals enabled
  */
-class SecurityTest extends \CIUnitTestCase {
+class SecurityTest extends \CodeIgniter\Test\CIUnitTestCase {
 
 	protected function setUp(): void
 	{

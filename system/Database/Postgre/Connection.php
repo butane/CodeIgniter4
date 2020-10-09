@@ -7,7 +7,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -53,7 +53,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 *
 	 * @var string
 	 */
-	public $DBDriver = 'postgre';
+	public $DBDriver = 'Postgre';
 
 	//--------------------------------------------------------------------
 
@@ -172,6 +172,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 			return $this->dataCache['version'];
 		}
 
+		// @phpstan-ignore-next-line
 		if (! $this->connID || ( $pgVersion = pg_version($this->connID)) === false)
 		{
 			$this->initialize();
@@ -187,11 +188,23 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 *
 	 * @param string $sql
 	 *
-	 * @return resource
+	 * @return mixed
 	 */
 	public function execute(string $sql)
 	{
-		return pg_query($this->connID, $sql);
+		try
+		{
+			return pg_query($this->connID, $sql);
+		}
+		catch (\ErrorException $e)
+		{
+			log_message('error', $e);
+			if ($this->DBDebug)
+			{
+				throw $e;
+			}
+		}
+		return false;
 	}
 
 	//--------------------------------------------------------------------
@@ -227,7 +240,8 @@ class Connection extends BaseConnection implements ConnectionInterface
 		{
 			return pg_escape_literal($this->connID, $str);
 		}
-		elseif (is_bool($str))
+
+		if (is_bool($str))
 		{
 			return $str ? 'TRUE' : 'FALSE';
 		}
@@ -467,9 +481,9 @@ class Connection extends BaseConnection implements ConnectionInterface
 	/**
 	 * Insert ID
 	 *
-	 * @return integer
+	 * @return integer|string
 	 */
-	public function insertID(): int
+	public function insertID()
 	{
 		$v = pg_version($this->connID);
 		// 'server' key is only available since PostgreSQL 7.4
@@ -518,7 +532,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 */
 	protected function buildDSN()
 	{
-		$this->DSN === '' || $this->DSN = '';
+		$this->DSN === '' || $this->DSN = ''; // @phpstan-ignore-line
 
 		// If UNIX sockets are used, we shouldn't set a port
 		if (strpos($this->hostname, '/') !== false)
@@ -549,7 +563,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 		// array, but they might be set by parse_url() if the configuration was
 		// provided via string> Example:
 		//
-		// postgre://username:password@localhost:5432/database?connect_timeout=5&sslmode=1
+		// Postgre://username:password@localhost:5432/database?connect_timeout=5&sslmode=1
 		foreach (['connect_timeout', 'options', 'sslmode', 'service'] as $key)
 		{
 			if (isset($this->{$key}) && is_string($this->{$key}) && $this->{$key} !== '')

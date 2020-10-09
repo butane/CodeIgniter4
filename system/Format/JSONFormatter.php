@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -40,6 +40,7 @@
 namespace CodeIgniter\Format;
 
 use CodeIgniter\Format\Exceptions\FormatException;
+use Config\Format;
 
 /**
  * JSON data formatter
@@ -50,19 +51,22 @@ class JSONFormatter implements FormatterInterface
 	/**
 	 * Takes the given data and formats it.
 	 *
-	 * @param $data
+	 * @param mixed $data
 	 *
 	 * @return string|boolean (JSON string | false)
 	 */
 	public function format($data)
 	{
-		$options = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+		$config = new Format();
+
+		$options = $config->formatterOptions['application/json'] ?? JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+		$options = $options | JSON_PARTIAL_OUTPUT_ON_ERROR;
 
 		$options = ENVIRONMENT === 'production' ? $options : $options | JSON_PRETTY_PRINT;
 
 		$result = json_encode($data, $options, 512);
 
-		if (json_last_error() !== JSON_ERROR_NONE)
+		if (! in_array(json_last_error(), [JSON_ERROR_NONE, JSON_ERROR_RECURSION], true))
 		{
 			throw FormatException::forInvalidJSON(json_last_error_msg());
 		}

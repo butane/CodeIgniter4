@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -72,6 +72,12 @@ class Database
 	 */
 	public function load(array $params = [], string $alias)
 	{
+		// Handle universal DSN connection string
+		if (! empty($params['DSN']) && strpos($params['DSN'], '://') !== false)
+		{
+			$params = $this->parseDSN($params);
+		}
+
 		// No DB specified? Beat them senseless...
 		if (empty($params['DBDriver']))
 		{
@@ -109,9 +115,7 @@ class Database
 			$db->initialize();
 		}
 
-		$class = new $className($db);
-
-		return $class;
+		return new $className($db);
 	}
 
 	//--------------------------------------------------------------------
@@ -133,9 +137,53 @@ class Database
 			$db->initialize();
 		}
 
-		$class = new $className($db);
+		return new $className($db);
+	}
 
-		return $class;
+	//--------------------------------------------------------------------
+
+	/**
+	 * Parse universal DSN string
+	 *
+	 * @param array $params
+	 *
+	 * @return array
+	 * @throws \InvalidArgumentException
+	 */
+	protected function parseDSN(array $params): array
+	{
+		if (($dsn = parse_url($params['DSN'])) === false)
+		{
+			throw new \InvalidArgumentException('Your DSN connection string is invalid.');
+		}
+
+		$dsnParams = [
+			'DSN'      => '',
+			'DBDriver' => $dsn['scheme'],
+			'hostname' => isset($dsn['host']) ? rawurldecode($dsn['host']) : '',
+			'port'     => isset($dsn['port']) ? rawurldecode((string) $dsn['port']) : '',
+			'username' => isset($dsn['user']) ? rawurldecode($dsn['user']) : '',
+			'password' => isset($dsn['pass']) ? rawurldecode($dsn['pass']) : '',
+			'database' => isset($dsn['path']) ? rawurldecode(substr($dsn['path'], 1)) : '',
+		];
+
+		// Do we have additional config items set?
+		if (! empty($dsn['query']))
+		{
+			parse_str($dsn['query'], $extra);
+
+			foreach ($extra as $key => $val)
+			{
+				if (is_string($val) && in_array(strtolower($val), ['true', 'false', 'null'], true))
+				{
+					$val = $val === 'null' ? null : filter_var($val, FILTER_VALIDATE_BOOLEAN);
+				}
+
+				$dsnParams[$key] = $val;
+			}
+		}
+
+		return array_merge($params, $dsnParams);
 	}
 
 	//--------------------------------------------------------------------

@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -56,7 +56,14 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 */
 	public $DBDriver = 'SQLite3';
 
-	// --------------------------------------------------------------------
+	/**
+	 * Identifier escape character
+	 *
+	 * @var string
+	 */
+	public $escapeChar = '`';
+
+	//--------------------------------------------------------------------
 
 	/**
 	 * ORDER BY random keyword
@@ -79,12 +86,17 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 */
 	public function connect(bool $persistent = false)
 	{
-		if ($persistent && $this->db->DBDebug)
+		if ($persistent && $this->DBDebug)
 		{
 			throw new DatabaseException('SQLite3 doesn\'t support persistent connections.');
 		}
 		try
 		{
+			if ($this->database !== ':memory:' && strpos($this->database, DIRECTORY_SEPARATOR) === false)
+			{
+				$this->database = WRITEPATH . $this->database;
+			}
+
 			return (! $this->password)
 				? new \SQLite3($this->database)
 				: new \SQLite3($this->database, SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE, $this->password);
@@ -165,9 +177,21 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 */
 	public function execute(string $sql)
 	{
-		return $this->isWriteType($sql)
-			? $this->connID->exec($sql)
-			: $this->connID->query($sql);
+		try
+		{
+			return $this->isWriteType($sql)
+				? $this->connID->exec($sql)
+				: $this->connID->query($sql);
+		}
+		catch (\ErrorException $e)
+		{
+			log_message('error', $e);
+			if ($this->DBDebug)
+			{
+				throw $e;
+			}
+		}
+		return false;
 	}
 
 	//--------------------------------------------------------------------
@@ -250,15 +274,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 			$this->initialize();
 		}
 
-		if (false === ($sql = $this->_listColumns($table)))
-		{
-			if ($this->DBDebug)
-			{
-				throw new DatabaseException(lang('Database.featureUnavailable'));
-			}
-
-			return false;
-		}
+		$sql = $this->_listColumns($table);
 
 		$query                                  = $this->query($sql);
 		$this->dataCache['field_names'][$table] = [];
@@ -323,8 +339,8 @@ class Connection extends BaseConnection implements ConnectionInterface
 			$retVal[$i]->type        = $query[$i]->type;
 			$retVal[$i]->max_length  = null;
 			$retVal[$i]->default     = $query[$i]->dflt_value;
-			$retVal[$i]->primary_key = isset($query[$i]->pk) ? (bool)$query[$i]->pk : false;
-			$retVal[$i]->nullable    = isset($query[$i]->notnull) ? ! (bool)$query[$i]->notnull : false;
+			$retVal[$i]->primary_key = isset($query[$i]->pk) && (bool)$query[$i]->pk;
+			$retVal[$i]->nullable    = isset($query[$i]->notnull) && ! (bool)$query[$i]->notnull;
 		}
 
 		return $retVal;

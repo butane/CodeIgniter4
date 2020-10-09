@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -39,8 +39,8 @@
 
 namespace CodeIgniter\Session\Handlers;
 
-use CodeIgniter\Config\BaseConfig;
 use CodeIgniter\Session\Exceptions\SessionException;
+use Config\App as AppConfig;
 
 /**
  * Session handler using Redis for persistence
@@ -51,7 +51,7 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 	/**
 	 * phpRedis instance
 	 *
-	 * @var resource
+	 * @var \Redis|null
 	 */
 	protected $redis;
 
@@ -65,7 +65,7 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 	/**
 	 * Lock key
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	protected $lockKey;
 
@@ -88,12 +88,12 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 	/**
 	 * Constructor
 	 *
-	 * @param BaseConfig $config
-	 * @param string     $ipAddress
+	 * @param AppConfig $config
+	 * @param string    $ipAddress
 	 *
 	 * @throws \Exception
 	 */
-	public function __construct(BaseConfig $config, string $ipAddress)
+	public function __construct(AppConfig $config, string $ipAddress)
 	{
 		parent::__construct($config, $ipAddress);
 
@@ -101,8 +101,10 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 		{
 			throw SessionException::forEmptySavepath();
 		}
-		elseif (preg_match('#(?:tcp://)?([^:?]+)(?:\:(\d+))?(\?.+)?#', $this->savePath, $matches))
+
+		if (preg_match('#(?:tcp://)?([^:?]+)(?:\:(\d+))?(\?.+)?#', $this->savePath, $matches))
 		{
+			// @phpstan-ignore-next-line
 			isset($matches[3]) || $matches[3] = ''; // Just to avoid undefined index notices below
 
 			$this->savePath = [
@@ -125,21 +127,22 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 			$this->keyPrefix .= $this->ipAddress . ':';
 		}
 
-				$this->sessionExpiration = $config->sessionExpiration;
+		$this->sessionExpiration = empty($config->sessionExpiration)
+			? (int) ini_get('session.gc_maxlifetime')
+			: (int) $config->sessionExpiration;
 	}
 
 	//--------------------------------------------------------------------
-
 	/**
 	 * Open
 	 *
 	 * Sanitizes save_path and initializes connection.
 	 *
-	 * @param  string $save_path Server path
-	 * @param  string $name      Session cookie name, unused
+	 * @param  string $savePath Server path
+	 * @param  string $name     Session cookie name, unused
 	 * @return boolean
 	 */
-	public function open($save_path, $name): bool
+	public function open($savePath, $name): bool
 	{
 		if (empty($this->savePath))
 		{
@@ -178,24 +181,24 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 	 *
 	 * @param string $sessionID Session ID
 	 *
-	 * @return string|false	Serialized session data
+	 * @return string	Serialized session data
 	 */
 	public function read($sessionID): string
 	{
 		if (isset($this->redis) && $this->lockSession($sessionID))
 		{
 			// Needed by write() to detect session_regenerate_id() calls
-			if (is_null($this->sessionID))
+			if (is_null($this->sessionID)) // @phpstan-ignore-line
 			{
 				$this->sessionID = $sessionID;
 			}
 
-			$session_data                               = $this->redis->get($this->keyPrefix . $sessionID);
-			is_string($session_data) ? $this->keyExists = true : $session_data = '';
+			$sessionData                               = $this->redis->get($this->keyPrefix . $sessionID);
+			is_string($sessionData) ? $this->keyExists = true : $sessionData = '';
 
-			$this->fingerprint = md5($session_data);
+			$this->fingerprint = md5($sessionData);
 
-			return $session_data;
+			return $sessionData;
 		}
 
 		return '';
@@ -219,8 +222,9 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 		{
 			return false;
 		}
+
 		// Was the ID regenerated?
-		elseif ($sessionID !== $this->sessionID)
+		if ($sessionID !== $this->sessionID)
 		{
 			if (! $this->releaseLock() || ! $this->lockSession($sessionID))
 			{
@@ -268,8 +272,9 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 		{
 			try
 			{
-				$ping_reply = $this->redis->ping();
-				if (($ping_reply === true) || ($ping_reply === '+PONG'))
+				$pingReply = $this->redis->ping();
+				// @phpstan-ignore-next-line
+				if (($pingReply === true) || ($pingReply === '+PONG'))
 				{
 					isset($this->lockKey) && $this->redis->del($this->lockKey);
 
@@ -356,24 +361,24 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 		}
 
 		// 30 attempts to obtain a lock, in case another request already has it
-		$lock_key = $this->keyPrefix . $sessionID . ':lock';
-		$attempt  = 0;
+		$lockKey = $this->keyPrefix . $sessionID . ':lock';
+		$attempt = 0;
 
 		do
 		{
-			if (($ttl = $this->redis->ttl($lock_key)) > 0)
+			if (($ttl = $this->redis->ttl($lockKey)) > 0)
 			{
 				sleep(1);
 				continue;
 			}
 
-			if (! $this->redis->setex($lock_key, 300, time()))
+			if (! $this->redis->setex($lockKey, 300, (string) time()))
 			{
 				$this->logger->error('Session: Error while trying to obtain lock for ' . $this->keyPrefix . $sessionID);
 				return false;
 			}
 
-			$this->lockKey = $lock_key;
+			$this->lockKey = $lockKey;
 			break;
 		}
 		while (++ $attempt < 30);
@@ -383,7 +388,8 @@ class RedisHandler extends BaseHandler implements \SessionHandlerInterface
 			log_message('error', 'Session: Unable to obtain lock for ' . $this->keyPrefix . $sessionID . ' after 30 attempts, aborting.');
 			return false;
 		}
-		elseif ($ttl === -1)
+
+		if ($ttl === -1)
 		{
 			log_message('debug', 'Session: Lock for ' . $this->keyPrefix . $sessionID . ' had no TTL, overriding.');
 		}

@@ -7,7 +7,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -56,7 +56,7 @@ class Result extends BaseResult implements ResultInterface
 	 */
 	public function getFieldCount(): int
 	{
-		return $this->resultID->numColumns();
+		return $this->resultID->numColumns(); // @phpstan-ignore-line
 	}
 
 	//--------------------------------------------------------------------
@@ -71,7 +71,7 @@ class Result extends BaseResult implements ResultInterface
 		$fieldNames = [];
 		for ($i = 0, $c = $this->getFieldCount(); $i < $c; $i ++)
 		{
-			$fieldNames[] = $this->resultID->columnName($i);
+			$fieldNames[] = $this->resultID->columnName($i); // @phpstan-ignore-line
 		}
 
 		return $fieldNames;
@@ -86,7 +86,7 @@ class Result extends BaseResult implements ResultInterface
 	 */
 	public function getFieldData(): array
 	{
-		static $data_types = [
+		static $dataTypes = [
 			SQLITE3_INTEGER => 'integer',
 			SQLITE3_FLOAT   => 'float',
 			SQLITE3_TEXT    => 'text',
@@ -95,15 +95,19 @@ class Result extends BaseResult implements ResultInterface
 		];
 
 		$retVal = [];
+		$this->resultID->fetchArray(SQLITE3_NUM); // @phpstan-ignore-line
 
 		for ($i = 0, $c = $this->getFieldCount(); $i < $c; $i ++)
 		{
 			$retVal[$i]             = new \stdClass();
-			$retVal[$i]->name       = $this->resultID->columnName($i);
-			$type                   = $this->resultID->columnType($i);
-			$retVal[$i]->type       = isset($data_types[$type]) ? $data_types[$type] : $type;
+			$retVal[$i]->name       = $this->resultID->columnName($i); // @phpstan-ignore-line
+			$type                   = $this->resultID->columnType($i); // @phpstan-ignore-line
+			$retVal[$i]->type       = $type;
+			$retVal[$i]->type_name  = isset($dataTypes[$type]) ? $dataTypes[$type] : null;
 			$retVal[$i]->max_length = null;
+			$retVal[$i]->length     = null;
 		}
+		$this->resultID->reset(); // @phpstan-ignore-line
 
 		return $retVal;
 	}
@@ -143,7 +147,7 @@ class Result extends BaseResult implements ResultInterface
 			throw new DatabaseException('SQLite3 doesn\'t support seeking to other offset.');
 		}
 
-		return $this->resultID->reset();
+		return $this->resultID->reset(); // @phpstan-ignore-line
 	}
 
 	//--------------------------------------------------------------------
@@ -157,7 +161,7 @@ class Result extends BaseResult implements ResultInterface
 	 */
 	protected function fetchAssoc()
 	{
-		return $this->resultID->fetchArray(SQLITE3_ASSOC);
+		return $this->resultID->fetchArray(SQLITE3_ASSOC); // @phpstan-ignore-line
 	}
 
 	//--------------------------------------------------------------------
@@ -178,7 +182,8 @@ class Result extends BaseResult implements ResultInterface
 		{
 			return false;
 		}
-		elseif ($className === 'stdClass')
+
+		if ($className === 'stdClass')
 		{
 			return (object) $row;
 		}

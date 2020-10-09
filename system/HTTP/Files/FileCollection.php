@@ -9,7 +9,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -312,14 +312,14 @@ class FileCollection
 	{
 		if (! empty($index))
 		{
-			$current_index = array_shift($index);
+			$currentIndex = array_shift($index);
 		}
-		if (is_array($index) && $index && is_array($value[$current_index]) && $value[$current_index])
+		if (isset($currentIndex) && is_array($index) && $index && is_array($value[$currentIndex]) && $value[$currentIndex])
 		{
-			return $this->getValueDotNotationSyntax($index, $value[$current_index]);
+			return $this->getValueDotNotationSyntax($index, $value[$currentIndex]);
 		}
 
-		return (isset($value[$current_index])) ? $value[$current_index] : null;
+		return (isset($currentIndex) && isset($value[$currentIndex])) ? $value[$currentIndex] : null;
 	}
 
 }

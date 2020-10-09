@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
  * @copyright  2008-2014 EllisLab, Inc. (https://ellislab.com/)
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 1.0.0
@@ -54,25 +54,25 @@ if (! function_exists('word_limiter'))
 	 *
 	 * @param string  $str
 	 * @param integer $limit
-	 * @param string  $end_char the end character. Usually an ellipsis
+	 * @param string  $endChar the end character. Usually an ellipsis
 	 *
 	 * @return string
 	 */
-	function word_limiter(string $str, int $limit = 100, string $end_char = '&#8230;'): string
+	function word_limiter(string $str, int $limit = 100, string $endChar = '&#8230;'): string
 	{
 		if (trim($str) === '')
 		{
 			return $str;
 		}
 
-		preg_match('/^\s*+(?:\S++\s*+){1,' . (int) $limit . '}/', $str, $matches);
+		preg_match('/^\s*+(?:\S++\s*+){1,' . $limit . '}/', $str, $matches);
 
 		if (strlen($str) === strlen($matches[0]))
 		{
-			$end_char = '';
+			$endChar = '';
 		}
 
-		return rtrim($matches[0]) . $end_char;
+		return rtrim($matches[0]) . $endChar;
 	}
 }
 
@@ -88,11 +88,11 @@ if (! function_exists('character_limiter'))
 	 *
 	 * @param string  $str
 	 * @param integer $n
-	 * @param string  $end_char the end character. Usually an ellipsis
+	 * @param string  $endChar the end character. Usually an ellipsis
 	 *
 	 * @return string
 	 */
-	function character_limiter(string $str, int $n = 500, string $end_char = '&#8230;'): string
+	function character_limiter(string $str, int $n = 500, string $endChar = '&#8230;'): string
 	{
 		if (mb_strlen($str) < $n)
 		{
@@ -118,7 +118,7 @@ if (! function_exists('character_limiter'))
 				break;
 			}
 		}
-		return (mb_strlen($out) === mb_strlen($str)) ? $out : $out . $end_char;
+		return (mb_strlen($out) === mb_strlen($str)) ? $out : $out . $endChar;
 	}
 }
 
@@ -397,16 +397,16 @@ if (! function_exists('highlight_phrase'))
 	 *
 	 * Highlights a phrase within a text string
 	 *
-	 * @param string $str       the text string
-	 * @param string $phrase    the phrase you'd like to highlight
-	 * @param string $tag_open  the opening tag to precede the phrase with
-	 * @param string $tag_close the closing tag to end the phrase with
+	 * @param string $str      the text string
+	 * @param string $phrase   the phrase you'd like to highlight
+	 * @param string $tagOpen  the opening tag to precede the phrase with
+	 * @param string $tagClose the closing tag to end the phrase with
 	 *
 	 * @return string
 	 */
-	function highlight_phrase(string $str, string $phrase, string $tag_open = '<mark>', string $tag_close = '</mark>'): string
+	function highlight_phrase(string $str, string $phrase, string $tagOpen = '<mark>', string $tagClose = '</mark>'): string
 	{
-		return ($str !== '' && $phrase !== '') ? preg_replace('/(' . preg_quote($phrase, '/') . ')/i', $tag_open . '\\1' . $tag_close, $str) : $str;
+		return ($str !== '' && $phrase !== '') ? preg_replace('/(' . preg_quote($phrase, '/') . ')/i', $tagOpen . '\\1' . $tagClose, $str) : $str;
 	}
 }
 
@@ -423,26 +423,26 @@ if (! function_exists('convert_accented_characters'))
 	 */
 	function convert_accented_characters(string $str): string
 	{
-		static $array_from, $array_to;
+		static $arrayFrom, $arrayTo;
 
-		if (! is_array($array_from))
+		if (! is_array($arrayFrom))
 		{
 			$config = new Config\ForeignCharacters();
 
 			if (empty($config->characterList) || ! is_array($config->characterList))
 			{
-				$array_from = [];
-				$array_to   = [];
+				$arrayFrom = [];
+				$arrayTo   = [];
 
 				return $str;
 			}
-			$array_from = array_keys($config->characterList);
-			$array_to   = array_values($config->characterList);
+			$arrayFrom = array_keys($config->characterList);
+			$arrayTo   = array_values($config->characterList);
 
 			unset($config);
 		}
 
-		return preg_replace($array_from, $array_to, $str);
+		return preg_replace($arrayFrom, $arrayTo, $str);
 	}
 }
 
@@ -464,9 +464,6 @@ if (! function_exists('word_wrap'))
 	 */
 	function word_wrap(string $str, int $charlim = 76): string
 	{
-		// Set the character limit
-		is_numeric($charlim) || $charlim = 76;
-
 		// Reduce multiple spaces
 		$str = preg_replace('| +|', ' ', $str);
 
@@ -558,34 +555,34 @@ if (! function_exists('ellipsize'))
 	 *
 	 * This function will strip tags from a string, split it at its max_length and ellipsize
 	 *
-	 * @param string  $str        String to ellipsize
-	 * @param integer $max_length Max length of string
-	 * @param mixed   $position   int (1|0) or float, .5, .2, etc for position to split
-	 * @param string  $ellipsis   ellipsis ; Default '...'
+	 * @param string  $str       String to ellipsize
+	 * @param integer $maxLength Max length of string
+	 * @param mixed   $position  int (1|0) or float, .5, .2, etc for position to split
+	 * @param string  $ellipsis  ellipsis ; Default '...'
 	 *
 	 * @return string    Ellipsized string
 	 */
-	function ellipsize(string $str, int $max_length, $position = 1, string $ellipsis = '&hellip;'): string
+	function ellipsize(string $str, int $maxLength, $position = 1, string $ellipsis = '&hellip;'): string
 	{
 		// Strip tags
 		$str = trim(strip_tags($str));
 
 		// Is the string long enough to ellipsize?
-		if (mb_strlen($str) <= $max_length)
+		if (mb_strlen($str) <= $maxLength)
 		{
 			return $str;
 		}
 
-		$beg      = mb_substr($str, 0, floor($max_length * $position));
+		$beg      = mb_substr($str, 0, (int) floor($maxLength * $position));
 		$position = ($position > 1) ? 1 : $position;
 
 		if ($position === 1)
 		{
-			$end = mb_substr($str, 0, -($max_length - mb_strlen($beg)));
+			$end = mb_substr($str, 0, -($maxLength - mb_strlen($beg)));
 		}
 		else
 		{
-			$end = mb_substr($str, -($max_length - mb_strlen($beg)));
+			$end = mb_substr($str, -($maxLength - mb_strlen($beg)));
 		}
 
 		return $beg . $ellipsis . $end;
@@ -751,11 +748,12 @@ if (! function_exists('random_string'))
 						break;
 				}
 
+				// @phpstan-ignore-next-line
 				return substr(str_shuffle(str_repeat($pool, ceil($len / strlen($pool)))), 0, $len);
 			case 'md5':
-				return md5(uniqid(mt_rand(), true));
+				return md5(uniqid((string) mt_rand(), true));
 			case 'sha1':
-				return sha1(uniqid(mt_rand(), true));
+				return sha1(uniqid((string) mt_rand(), true));
 			case 'crypto':
 				return bin2hex(random_bytes($len / 2));
 		}
@@ -794,7 +792,8 @@ if (! function_exists('alternator'))
 	 *
 	 * Allows strings to be alternated. See docs...
 	 *
-	 * @param string (as many parameters as needed)
+	 * @phpstan-ignore-next-line
+	 * @param                    string (as many parameters as needed)
 	 *
 	 * @return string
 	 */
@@ -838,7 +837,7 @@ if (! function_exists('excerpt'))
 	{
 		if (isset($phrase))
 		{
-			$phrasePos = strpos(strtolower($text), strtolower($phrase));
+			$phrasePos = stripos($text, $phrase);
 			$phraseLen = strlen($phrase);
 		}
 		elseif (! isset($phrase))
@@ -847,14 +846,14 @@ if (! function_exists('excerpt'))
 			$phraseLen = 1;
 		}
 
-		$pre = explode(' ', substr($text, 0, $phrasePos));
-		$pos = explode(' ', substr($text, $phrasePos + $phraseLen));
+		$pre = explode(' ', substr($text, 0, $phrasePos)); // @phpstan-ignore-line
+		$pos = explode(' ', substr($text, $phrasePos + $phraseLen)); // @phpstan-ignore-line
 
 		$prev  = ' ';
 		$post  = ' ';
 		$count = 0;
 
-		foreach (array_reverse($pre) as $pr => $e)
+		foreach (array_reverse($pre) as $e)
 		{
 			if ((strlen($e) + $count + 1) < $radius)
 			{
@@ -865,7 +864,7 @@ if (! function_exists('excerpt'))
 
 		$count = 0;
 
-		foreach ($pos as $po => $s)
+		foreach ($pos as $s)
 		{
 			if ((strlen($s) + $count + 1) < $radius)
 			{

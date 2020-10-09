@@ -257,7 +257,7 @@ A ``blog_template`` that might work for the above::
 	{blog_entry}
 		<div>
 			<h2>{title}</h2>
-			<p>{body}{/p}
+			<p>{body}</p>
 		</div>
 	{/blog_entry}
 
@@ -276,7 +276,7 @@ comments in a ``{#  #}`` symbols.
 	{blog_entry}
 		<div>
 			<h2>{title}</h2>
-			<p>{body}{/p}
+			<p>{body}</p>
 		</div>
 	{/blog_entry}
 
@@ -362,7 +362,7 @@ Escaping Data
 =============
 
 By default, all variable substitution is escaped to help prevent XSS attacks on your pages. CodeIgniter's ``esc`` method
-supports several different contexts, like general **html**, when it's in an HTML **attr*, in **css**, etc. If nothing
+supports several different contexts, like general **html**, when it's in an HTML **attr**, in **css**, etc. If nothing
 else is specified, the data will be assumed to be in an HTML context. You can specify the context used by using the **esc**
 filter::
 
@@ -462,7 +462,7 @@ The following filters are available when using the parser:
 +               +                     +                                                              +                                     +
 +---------------+---------------------+--------------------------------------------------------------+-------------------------------------+
 
-See `PHP's NumberFormatter <http://php.net/manual/en/numberformatter.create.php>`_ for details relevant to the
+See `PHP's NumberFormatter <https://www.php.net/manual/en/numberformatter.create.php>`_ for details relevant to the
 "local_number" filter.
 
 Custom Filters
@@ -671,17 +671,17 @@ using a view fragment::
 		['title' => 'Second Link', 'link' => '/second'],
 	];
 
-	foreach ($data1 as $menuitem)
+	foreach ($data1 as $menuItem)
 	{
-		$temp .= $parser->setData($menuItem)->renderString();
+		$temp .= $parser->setData($menuItem)->renderString($template1);
 	}
 
-	$template = '<ul>{menuitems}</ul>';
+	$template2 = '<ul>{menuitems}</ul>';
 	$data = [
 		'menuitems' => $temp
 	];
 	echo $parser->setData($data)
-	             ->renderString($template);
+	             ->renderString($template2);
 
 Result::
 
@@ -696,7 +696,7 @@ Class Reference
 
 .. php:class:: CodeIgniter\\View\\Parser
 
-	.. php:method:: render($view[, $options[, $saveData=false]]])
+	.. php:method:: render($view[, $options[, $saveData=false]])
 
 		:param  string  $view: File name of the view source
 		:param  array   $options: Array of options, as key/value pairs
@@ -720,7 +720,7 @@ Class Reference
 		Any conditional substitutions are performed first, then remaining
 		substitutions are performed for each data pair.
 
-	.. php:method:: renderString($template[, $options[, $saveData=false]]])
+	.. php:method:: renderString($template[, $options[, $saveData=false]])
 
 		:param  string  $template: View source provided as a string
     		:param  array   $options: Array of options, as key/value pairs

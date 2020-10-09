@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -96,14 +96,6 @@ class ListCommands extends BaseCommand
 	 */
 	protected $options = [];
 
-	/**
-	 * The length of the longest command name.
-	 * Used during display in columns.
-	 *
-	 * @var integer
-	 */
-	protected $maxFirstLength = 0;
-
 	//--------------------------------------------------------------------
 
 	/**
@@ -115,83 +107,46 @@ class ListCommands extends BaseCommand
 	{
 		$commands = $this->commands->getCommands();
 
-		$this->describeCommands($commands);
-
-		CLI::newLine();
-	}
-
-	//--------------------------------------------------------------------
-
-	/**
-	 * Displays the commands on the CLI.
-	 *
-	 * @param array $commands
-	 */
-	protected function describeCommands(array $commands = [])
-	{
 		ksort($commands);
 
 		// Sort into buckets by group
-		$sorted         = [];
-		$maxTitleLength = 0;
+		$groups = [];
 
 		foreach ($commands as $title => $command)
 		{
-			if (! isset($sorted[$command['group']]))
+			if (! isset($groups[$command['group']]))
 			{
-				$sorted[$command['group']] = [];
+				$groups[$command['group']] = [];
 			}
 
-			$sorted[$command['group']][$title] = $command;
-
-			$maxTitleLength = max($maxTitleLength, strlen($title));
+			$groups[$command['group']][$title] = $command;
 		}
 
-		ksort($sorted);
+		$length = max(array_map('strlen', array_keys($commands)));
+
+		ksort($groups);
 
 		// Display it all...
-		foreach ($sorted as $group => $items)
+		foreach ($groups as $group => $commands)
 		{
-			CLI::newLine();
-			CLI::write($group);
-
-			foreach ($items as $title => $item)
+			CLI::write($group, 'yellow');
+			foreach ($commands as $name => $command)
 			{
-				$title = $this->padTitle($title, $maxTitleLength, 2, 2);
-
-				$out = CLI::color($title, 'yellow');
-
-				if (isset($item['description']))
+				$name   = $this->setPad($name, $length, 2, 2);
+				$output = CLI::color($name, 'green');
+				if (isset($command['description']))
 				{
-					$out .= CLI::wrap($item['description'], 125, strlen($title));
+					$output .= CLI::wrap($command['description'], 125, strlen($name));
 				}
+				CLI::write($output);
+			}
 
-				CLI::write($out);
+			end($groups);
+
+			if ($group !== key($groups))
+			{
+				CLI::newLine();
 			}
 		}
 	}
-
-	//--------------------------------------------------------------------
-
-	/**
-	 * Pads our string out so that all titles are the same length to nicely line up descriptions.
-	 *
-	 * @param string  $item
-	 * @param integer $max
-	 * @param integer $extra  // How many extra spaces to add at the end
-	 * @param integer $indent
-	 *
-	 * @return string
-	 */
-	protected function padTitle(string $item, int $max, int $extra = 2, int $indent = 0): string
-	{
-		$max += $extra + $indent;
-
-		$item = str_repeat(' ', $indent) . $item;
-		$item = str_pad($item, $max);
-
-		return $item;
-	}
-
-	//--------------------------------------------------------------------
 }

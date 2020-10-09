@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -39,8 +39,8 @@
 
 namespace CodeIgniter\View;
 
-use CodeIgniter\Log\Logger;
 use CodeIgniter\View\Exceptions\ViewException;
+use Psr\Log\LoggerInterface;
 
 /**
  * Class Parser
@@ -93,13 +93,13 @@ class Parser extends View
 	/**
 	 * Constructor
 	 *
-	 * @param \Config\View $config
-	 * @param string       $viewPath
-	 * @param mixed        $loader
-	 * @param boolean      $debug
-	 * @param Logger       $logger
+	 * @param \Config\View    $config
+	 * @param string          $viewPath
+	 * @param mixed           $loader
+	 * @param boolean         $debug
+	 * @param LoggerInterface $logger
 	 */
-	public function __construct($config, string $viewPath = null, $loader = null, bool $debug = null, Logger $logger = null)
+	public function __construct($config, string $viewPath = null, $loader = null, bool $debug = null, LoggerInterface $logger = null)
 	{
 		// Ensure user plugins override core plugins.
 		$this->plugins = $config->plugins ?? [];
@@ -157,20 +157,25 @@ class Parser extends View
 			throw ViewException::forInvalidFile($file);
 		}
 
+		if (is_null($this->tempData))
+		{
+			$this->tempData = $this->data;
+		}
+
 		$template = file_get_contents($file);
-		$output   = $this->parse($template, $this->data, $options);
+		$output   = $this->parse($template, $this->tempData, $options);
 		$this->logPerformance($start, microtime(true), $view);
 
-		if (! $saveData)
+		if ($saveData)
 		{
-			$this->data = [];
+			$this->data = $this->tempData;
 		}
 		// Should we cache?
 		if (isset($options['cache']))
 		{
-			cache()->save($cacheName, $output, (int) $options['cache']);
+			cache()->save($cacheName, $output, (int) $options['cache']); // @phpstan-ignore-line
 		}
-
+		$this->tempData = null;
 		return $output;
 	}
 
@@ -196,14 +201,22 @@ class Parser extends View
 			$saveData = $this->config->saveData;
 		}
 
-		$output = $this->parse($template, $this->data, $options);
+		if (is_null($this->tempData))
+		{
+			$this->tempData = $this->data;
+		}
+
+		$output = $this->parse($template, $this->tempData, $options);
 
 		$this->logPerformance($start, microtime(true), $this->excerpt($template));
 
-		if (! $saveData)
+		if ($saveData)
 		{
-			$this->data = [];
+			$this->data = $this->tempData;
 		}
+
+		$this->tempData = null;
+
 		return $output;
 	}
 
@@ -243,7 +256,8 @@ class Parser extends View
 			}
 		}
 
-		$this->data = array_merge($this->data, $data);
+		$this->tempData = $this->tempData ?? $this->data;
+		$this->tempData = array_merge($this->tempData, $data);
 
 		return $this;
 	}
@@ -256,9 +270,10 @@ class Parser extends View
 	 * Parses pseudo-variables contained in the specified template,
 	 * replacing them with the data in the second param
 	 *
-	 * @param  string $template
-	 * @param  array  $data
-	 * @param  array  $options  Future options
+	 * @param string $template
+	 * @param array  $data
+	 * @param array  $options  Future options
+	 *
 	 * @return string
 	 */
 	protected function parse(string $template, array $data = [], array $options = null): string
@@ -304,9 +319,7 @@ class Parser extends View
 			}
 		}
 
-		$template = $this->insertNoparse($template);
-
-		return $template;
+		return $this->insertNoparse($template);
 	}
 
 	//--------------------------------------------------------------------
@@ -320,7 +333,7 @@ class Parser extends View
 	 */
 	protected function parseSingle(string $key, string $val): array
 	{
-		$pattern = '#' . $this->leftDelimiter . '!?\s*' . preg_quote($key) . '\s*\|*\s*([|a-zA-Z0-9<>=\(\),:_\-\s\+]+)*\s*!?' . $this->rightDelimiter . '#ms';
+		$pattern = '#' . $this->leftDelimiter . '!?\s*' . preg_quote($key) . '\s*\|*\s*([|\w<>=\(\),:.\-\s\+\\\\/]+)*\s*!?' . $this->rightDelimiter . '#ms';
 
 		return [$pattern => $val];
 	}
@@ -393,7 +406,7 @@ class Parser extends View
 
 						continue;
 					}
-					else if (is_object($val))
+					if (is_object($val))
 					{
 						$val = 'Class: ' . get_class($val);
 					}
@@ -402,7 +415,7 @@ class Parser extends View
 						$val = 'Resource';
 					}
 
-					$temp['#' . $this->leftDelimiter . '!?\s*' . preg_quote($key) . '\s*\|*\s*([|\w<>=\(\),:_\-\s\+]+)*\s*!?' . $this->rightDelimiter . '#s'] = $val;
+					$temp['#' . $this->leftDelimiter . '!?\s*' . preg_quote($key) . '\s*\|*\s*([|\w<>=\(\),:.\-\s\+\\\\/]+)*\s*!?' . $this->rightDelimiter . '#s'] = $val;
 				}
 
 				// Now replace our placeholders with the new content.
@@ -414,7 +427,10 @@ class Parser extends View
 				$str .= $out;
 			}
 
-			$replace['#' . $match[0] . '#s'] = $str;
+			//Escape | character from filters as it's handled as OR in regex
+			$escapedMatch = preg_replace('/(?<!\\\\)\\|/', '\\|', $match[0]);
+
+			$replace['#' . $escapedMatch . '#s'] = $str;
 		}
 
 		return $replace;
@@ -530,7 +546,14 @@ class Parser extends View
 
 		// Parse the PHP itself, or insert an error so they can debug
 		ob_start();
-		extract($this->data);
+
+		if (is_null($this->tempData))
+		{
+			$this->tempData = $this->data;
+		}
+
+		extract($this->tempData);
+
 		try
 		{
 			eval('?>' . $template . '<?php ');
@@ -540,6 +563,7 @@ class Parser extends View
 			ob_end_clean();
 			throw ViewException::forTagSyntaxError(str_replace(['?>', '<?php '], '', $template));
 		}
+
 		return ob_get_clean();
 	}
 
@@ -565,10 +589,10 @@ class Parser extends View
 	 * Handles replacing a pseudo-variable with the actual content. Will double-check
 	 * for escaping brackets.
 	 *
-	 * @param $pattern
-	 * @param $content
-	 * @param $template
-	 * @param boolean  $escape
+	 * @param mixed   $pattern
+	 * @param string  $content
+	 * @param string  $template
+	 * @param boolean $escape
 	 *
 	 * @return string
 	 */
@@ -618,9 +642,7 @@ class Parser extends View
 			}
 		}
 
-		$replace = $this->applyFilters($replace, $filters);
-
-		return $replace;
+		return $this->applyFilters($replace, $filters);
 	}
 
 	//--------------------------------------------------------------------
@@ -683,7 +705,7 @@ class Parser extends View
 		foreach ($filters as $filter)
 		{
 			// Grab any parameter we might need to send
-			preg_match('/\([a-zA-Z0-9\-:_ +,<>=]+\)/', $filter, $param);
+			preg_match('/\([\w<>=\/\\\,:.\-\s\+]+\)/', $filter, $param);
 
 			// Remove the () and spaces to we have just the parameter left
 			$param = ! empty($param) ? trim($param[0], '() ') : null;
@@ -766,7 +788,7 @@ class Parser extends View
 				foreach ($matchesParams[0] as $item)
 				{
 					$keyVal = explode('=', $item);
-					if (count($keyVal) == 2)
+					if (count($keyVal) === 2)
 					{
 						$params[$keyVal[0]] = str_replace('"', '', $keyVal[1]);
 					}
@@ -820,7 +842,7 @@ class Parser extends View
 	 * Converts an object to an array, respecting any
 	 * toArray() methods on an object.
 	 *
-	 * @param $value
+	 * @param mixed $value
 	 *
 	 * @return mixed
 	 */

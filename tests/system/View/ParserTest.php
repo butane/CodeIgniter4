@@ -1,9 +1,9 @@
 <?php
 
-use CodeIgniter\View\Parser;
 use CodeIgniter\View\Exceptions\ViewException;
+use CodeIgniter\View\Parser;
 
-class ParserTest extends \CIUnitTestCase
+class ParserTest extends \CodeIgniter\Test\CIUnitTestCase
 {
 
 	protected function setUp(): void
@@ -256,7 +256,7 @@ class ParserTest extends \CIUnitTestCase
 		$power = new class extends \CodeIgniter\Entity {
 			public $foo    = 'bar';
 			protected $bar = 'baz';
-			public function toArray(bool $onlyChanged = false, bool $cast = true): array
+			public function toArray(bool $onlyChanged = false, bool $cast = true, bool $recursive = false): array
 			{
 				return [
 					'foo'     => $this->foo,
@@ -940,27 +940,31 @@ class ParserTest extends \CIUnitTestCase
 
 	public function testRenderSavingData()
 	{
-		$parser = new Parser($this->config, $this->viewsDir, $this->loader);
-		$parser->setData(['testString' => 'Hello World']);
-
+		$parser   = new Parser($this->config, $this->viewsDir, $this->loader);
 		$expected = "<h1>Hello World</h1>\n";
-		$this->assertEquals($expected, $parser->render('Simpler', [], true));
-		$this->assertArrayHasKey('testString', $parser->getData());
+
+		$parser->setData(['testString' => 'Hello World']);
 		$this->assertEquals($expected, $parser->render('Simpler', [], false));
 		$this->assertArrayNotHasKey('testString', $parser->getData());
+
+		$parser->setData(['testString' => 'Hello World']);
+		$this->assertEquals($expected, $parser->render('Simpler', [], true));
+		$this->assertArrayHasKey('testString', $parser->getData());
 	}
 
 	public function testRenderStringSavingData()
 	{
-		$parser = new Parser($this->config, $this->viewsDir, $this->loader);
-		$parser->setData(['testString' => 'Hello World']);
-
+		$parser   = new Parser($this->config, $this->viewsDir, $this->loader);
 		$expected = '<h1>Hello World</h1>';
 		$pattern  = '<h1>{testString}</h1>';
-		$this->assertEquals($expected, $parser->renderString($pattern, [], true));
-		$this->assertArrayHasKey('testString', $parser->getData());
+
+		$parser->setData(['testString' => 'Hello World']);
 		$this->assertEquals($expected, $parser->renderString($pattern, [], false));
 		$this->assertArrayNotHasKey('testString', $parser->getData());
+		//last set data is not saved
+		$parser->setData(['testString' => 'Hello World']);
+		$this->assertEquals($expected, $parser->renderString($pattern, [], true));
+		$this->assertArrayHasKey('testString', $parser->getData());
 	}
 
 	public function testRenderFindsOtherView()

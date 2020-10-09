@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT    MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -51,14 +51,14 @@ class Image extends File
 	/**
 	 * The original image width in pixels.
 	 *
-	 * @var
+	 * @var integer|float
 	 */
 	public $origWidth;
 
 	/**
 	 * The original image height in pixels.
 	 *
-	 * @var
+	 * @var integer|float
 	 */
 	public $origHeight;
 
@@ -109,7 +109,7 @@ class Image extends File
 
 		if (! is_dir($targetPath))
 		{
-			mkdir($targetName, 0755, true);
+			mkdir($targetPath, 0755, true);
 		}
 
 		if (! copy($this->getPathname(), "{$targetPath}{$targetName}"))
@@ -131,17 +131,22 @@ class Image extends File
 	 *
 	 * @param boolean $return
 	 *
-	 * @return mixed
+	 * @return array|boolean
 	 */
 	public function getProperties(bool $return = false)
 	{
 		$path = $this->getPathname();
 
-		$vals  = getimagesize($path);
+		if (! $vals = getimagesize($path))
+		{
+			throw ImageException::forFileNotSupported();
+		}
+
 		$types = [
-			1 => 'gif',
-			2 => 'jpeg',
-			3 => 'png',
+			IMAGETYPE_GIF  => 'gif',
+			IMAGETYPE_JPEG => 'jpeg',
+			IMAGETYPE_PNG  => 'png',
+			IMAGETYPE_WEBP => 'webp',
 		];
 
 		$mime = 'image/' . ($types[$vals[2]] ?? 'jpg');

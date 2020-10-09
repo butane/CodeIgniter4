@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -53,7 +53,7 @@ class Security
 	 *
 	 * Random hash for Cross Site Request Forgery protection cookie
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	protected $CSRFHash;
 
@@ -126,6 +126,13 @@ class Security
 	protected $cookieSecure = false;
 
 	/**
+	 * SameSite setting of the CSRF cookie
+	 *
+	 * @var string
+	 */
+	protected $CSRFSameSite = 'Lax';
+
+	/**
 	 * List of sanitize filename strings
 	 *
 	 * @var array
@@ -179,21 +186,27 @@ class Security
 	public function __construct($config)
 	{
 		// Store our CSRF-related settings
-		$this->CSRFExpire     = $config->CSRFExpire;
-		$this->CSRFTokenName  = $config->CSRFTokenName;
-		$this->CSRFHeaderName = $config->CSRFHeaderName;
-		$this->CSRFCookieName = $config->CSRFCookieName;
-		$this->CSRFRegenerate = $config->CSRFRegenerate;
+		$this->CSRFExpire     = $config->CSRFExpire ?? $this->CSRFExpire;
+		$this->CSRFTokenName  = $config->CSRFTokenName ?? $this->CSRFTokenName;
+		$this->CSRFHeaderName = $config->CSRFHeaderName ?? $this->CSRFHeaderName;
+		$this->CSRFCookieName = $config->CSRFCookieName ?? $this->CSRFCookieName;
+		$this->CSRFRegenerate = $config->CSRFRegenerate ?? $this->CSRFRegenerate;
+		$this->CSRFSameSite   = $config->CSRFSameSite ?? $this->CSRFSameSite;
 
 		if (isset($config->cookiePrefix))
 		{
 			$this->CSRFCookieName = $config->cookiePrefix . $this->CSRFCookieName;
 		}
 
+		if (! in_array(strtolower($this->CSRFSameSite), ['', 'none', 'lax', 'strict'], true))
+		{
+			throw SecurityException::forInvalidSameSiteSetting($this->CSRFSameSite);
+		}
+
 		// Store cookie-related settings
-		$this->cookiePath   = $config->cookiePath;
-		$this->cookieDomain = $config->cookieDomain;
-		$this->cookieSecure = $config->cookieSecure;
+		$this->cookiePath   = $config->cookiePath ?? $this->cookiePath;
+		$this->cookieDomain = $config->cookieDomain ?? $this->cookieDomain;
+		$this->cookieSecure = $config->cookieSecure ?? $this->cookieSecure;
 
 		$this->CSRFSetHash();
 
@@ -275,17 +288,55 @@ class Security
 	 */
 	public function CSRFSetCookie(RequestInterface $request)
 	{
-		$expire        = time() + $this->CSRFExpire;
-		$secure_cookie = (bool) $this->cookieSecure;
+		$expire       = $this->CSRFExpire === 0 ? $this->CSRFExpire : time() + $this->CSRFExpire;
+		$secureCookie = (bool) $this->cookieSecure;
 
-		if ($secure_cookie && ! $request->isSecure())
+		if ($secureCookie && ! $request->isSecure())
 		{
 			return false;
 		}
 
-		setcookie(
-				$this->CSRFCookieName, $this->CSRFHash, $expire, $this->cookiePath, $this->cookieDomain, $secure_cookie, true                // Enforce HTTP only cookie for security
-		);
+		if (PHP_VERSION_ID < 70300)
+		{
+			// In PHP < 7.3.0, there is a "hacky" way to set the samesite parameter
+			$samesite = '';
+			if ($this->CSRFSameSite !== '')
+			{
+				$samesite = '; samesite=' . $this->CSRFSameSite;
+			}
+
+			setcookie(
+				$this->CSRFCookieName,
+				$this->CSRFHash,
+				$expire,
+				$this->cookiePath . $samesite,
+				$this->cookieDomain,
+				$secureCookie,
+				true                // Enforce HTTP only cookie for security
+			);
+		}
+		else
+		{
+			// PHP 7.3 adds another function signature allowing setting of samesite
+			$params = [
+				'expires'  => $expire,
+				'path'     => $this->cookiePath,
+				'domain'   => $this->cookieDomain,
+				'secure'   => $secureCookie,
+				'httponly' => true,// Enforce HTTP only cookie for security
+			];
+
+			if ($this->CSRFSameSite !== '')
+			{
+				$params['samesite'] = $this->CSRFSameSite;
+			}
+
+			setcookie(
+				$this->CSRFCookieName,
+				$this->CSRFHash,
+				$params
+			);
+		}
 
 		log_message('info', 'CSRF cookie sent');
 
@@ -297,9 +348,9 @@ class Security
 	/**
 	 * Returns the current CSRF Hash.
 	 *
-	 * @return string
+	 * @return string|null
 	 */
-	public function getCSRFHash(): string
+	public function getCSRFHash(): ?string
 	{
 		return $this->CSRFHash;
 	}
@@ -346,7 +397,6 @@ class Security
 	}
 
 	//--------------------------------------------------------------------
-
 	/**
 	 * Sanitize Filename
 	 *
@@ -358,16 +408,16 @@ class Security
 	 * e.g. file/in/some/approved/folder.txt, you can set the second optional
 	 * parameter, $relative_path to TRUE.
 	 *
-	 * @param string  $str           Input file name
-	 * @param boolean $relative_path Whether to preserve paths
+	 * @param string  $str          Input file name
+	 * @param boolean $relativePath Whether to preserve paths
 	 *
 	 * @return string
 	 */
-	public function sanitizeFilename(string $str, bool $relative_path = false): string
+	public function sanitizeFilename(string $str, bool $relativePath = false): string
 	{
 		$bad = $this->filenameBadChars;
 
-		if (! $relative_path)
+		if (! $relativePath)
 		{
 			$bad[] = './';
 			$bad[] = '/';

@@ -7,7 +7,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -73,8 +73,8 @@ class Header
 	 */
 	public function __construct(string $name, $value = null)
 	{
-		$this->name  = $name;
-		$this->value = $value;
+		$this->name = $name;
+		$this->setValue($value);
 	}
 
 	//--------------------------------------------------------------------
@@ -95,7 +95,7 @@ class Header
 	 * Gets the raw value of the header. This may return either a string
 	 * of an array, depending on whether the header has multiple values or not.
 	 *
-	 * @return array|null|string
+	 * @return array|string
 	 */
 	public function getValue()
 	{
@@ -123,13 +123,13 @@ class Header
 	/**
 	 * Sets the value of the header, overwriting any previous value(s).
 	 *
-	 * @param null $value
+	 * @param string|array|null $value
 	 *
 	 * @return $this
 	 */
 	public function setValue($value = null)
 	{
-		$this->value = $value;
+		$this->value = $value ?? '';
 
 		return $this;
 	}
@@ -140,18 +140,26 @@ class Header
 	 * Appends a value to the list of values for this header. If the
 	 * header is a single value string, it will be converted to an array.
 	 *
-	 * @param null $value
+	 * @param string|array|null $value
 	 *
 	 * @return $this
 	 */
 	public function appendValue($value = null)
 	{
+		if ($value === null)
+		{
+			return $this;
+		}
+
 		if (! is_array($this->value))
 		{
 			$this->value = [$this->value];
 		}
 
-		$this->value[] = $value;
+		if (! in_array($value, $this->value, true))
+		{
+			$this->value[] = $value;
+		}
 
 		return $this;
 	}
@@ -162,12 +170,17 @@ class Header
 	 * Prepends a value to the list of values for this header. If the
 	 * header is a single value string, it will be converted to an array.
 	 *
-	 * @param null $value
+	 * @param string|array|null $value
 	 *
 	 * @return $this
 	 */
 	public function prependValue($value = null)
 	{
+		if ($value === null)
+		{
+			return $this;
+		}
+
 		if (! is_array($this->value))
 		{
 			$this->value = [$this->value];
@@ -195,7 +208,7 @@ class Header
 		{
 			return $this->value;
 		}
-		else if (! is_array($this->value))
+		if (! is_array($this->value))
 		{
 			return '';
 		}

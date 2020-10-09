@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2017 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,12 +46,14 @@ namespace CodeIgniter\Encryption;
  */
 interface EncrypterInterface
 {
-
 	/**
 	 * Encrypt - convert plaintext into ciphertext
 	 *
-	 * @param  string $data   Input data
-	 * @param  array  $params Over-ridden parameters, specifically the key
+	 * @param string            $data   Input data
+	 * @param array|string|null $params Overridden parameters, specifically the key
+	 *
+	 * @throws \CodeIgniter\Encryption\Exceptions\EncryptionException
+	 *
 	 * @return string
 	 */
 	public function encrypt($data, $params = null);
@@ -59,8 +61,11 @@ interface EncrypterInterface
 	/**
 	 * Decrypt - convert ciphertext into plaintext
 	 *
-	 * @param  string $data   Encrypted data
-	 * @param  array  $params Over-ridden parameters, specifically the key
+	 * @param string            $data   Encrypted data
+	 * @param array|string|null $params Overridden parameters, specifically the key
+	 *
+	 * @throws \CodeIgniter\Encryption\Exceptions\EncryptionException
+	 *
 	 * @return string
 	 */
 	public function decrypt($data, $params = null);

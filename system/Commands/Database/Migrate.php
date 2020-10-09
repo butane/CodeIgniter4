@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -92,9 +92,9 @@ class Migrate extends BaseCommand
 	 * @var array
 	 */
 	protected $options = [
-		'-n'   => 'Set migration namespace',
-		'-g'   => 'Set database group',
-		'-all' => 'Set for all namespaces, will ignore (-n) option',
+		'-n'    => 'Set migration namespace',
+		'-g'    => 'Set database group',
+		'--all' => 'Set for all namespaces, will ignore (-n) option',
 	];
 
 	/**
@@ -102,20 +102,20 @@ class Migrate extends BaseCommand
 	 *
 	 * @param array $params
 	 */
-	public function run(array $params = [])
+	public function run(array $params)
 	{
 		$runner = Services::migrations();
 		$runner->clearCliMessages();
 
 		CLI::write(lang('Migrations.latest'), 'yellow');
 
-		$namespace = $params['-n'] ?? CLI::getOption('n');
-		$group     = $params['-g'] ?? CLI::getOption('g');
+		$namespace = $params['n'] ?? CLI::getOption('n');
+		$group     = $params['g'] ?? CLI::getOption('g');
 
 		try
 		{
 			// Check for 'all' namespaces
-			if ($this->isAllNamespace($params))
+			if (array_key_exists('all', $params) || CLI::getOption('all'))
 			{
 				$runner->setNamespace(null);
 			}
@@ -136,32 +136,11 @@ class Migrate extends BaseCommand
 				CLI::write($message);
 			}
 
-			CLI::write('Done');
+			CLI::write('Done migrations.', 'green');
 		}
-		catch (\Exception $e)
+		catch (\Throwable $e)
 		{
 			$this->showError($e);
 		}
 	}
-
-	/**
-	 * To migrate all namespaces to the latest migration
-	 *
-	 * Demo:
-	 *  1. command line: php spark migrate:latest -all
-	 *  2. command file: $this->call('migrate:latest', ['-g' => 'test','-all']);
-	 *
-	 * @param  array $params
-	 * @return boolean
-	 */
-	private function isAllNamespace(array $params): bool
-	{
-		if (array_search('-all', $params) !== false)
-		{
-			return true;
-		}
-
-		return ! is_null(CLI::getOption('all'));
-	}
-
 }

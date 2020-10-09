@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT    MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -52,14 +52,14 @@ class TimeDifference
 	/**
 	 * The timestamp of the "current" time.
 	 *
-	 * @var integer
+	 * @var \IntlCalendar
 	 */
 	protected $currentTime;
 
 	/**
 	 * The timestamp to compare the current time to.
 	 *
-	 * @var integer
+	 * @var float
 	 */
 	protected $testTime;
 
@@ -291,28 +291,28 @@ class TimeDifference
 			$phrase = lang('Time.years', [abs($years)], $locale);
 			$before = $years < 0;
 		}
-		else if ($months !== 0)
+		elseif ($months !== 0)
 		{
 			$phrase = lang('Time.months', [abs($months)], $locale);
 			$before = $months < 0;
 		}
-		else if ($days !== 0 && (abs($days) >= 7))
+		elseif ($days !== 0 && (abs($days) >= 7))
 		{
 			$weeks  = ceil($days / 7);
 			$phrase = lang('Time.weeks', [abs($weeks)], $locale);
 			$before = $days < 0;
 		}
-		else if ($days !== 0)
+		elseif ($days !== 0)
 		{
 			$phrase = lang('Time.days', [abs($days)], $locale);
 			$before = $days < 0;
 		}
-		else if ($hours !== 0)
+		elseif ($hours !== 0)
 		{
 			$phrase = lang('Time.hours', [abs($hours)], $locale);
 			$before = $hours < 0;
 		}
-		else if ($minutes !== 0)
+		elseif ($minutes !== 0)
 		{
 			$phrase = lang('Time.minutes', [abs($minutes)], $locale);
 			$before = $minutes < 0;
@@ -330,7 +330,7 @@ class TimeDifference
 	/**
 	 * Allow property-like access to our calculated values.
 	 *
-	 * @param $name
+	 * @param string $name
 	 *
 	 * @return mixed
 	 */
@@ -350,7 +350,7 @@ class TimeDifference
 	/**
 	 * Allow property-like checking for our calculated values.
 	 *
-	 * @param $name
+	 * @param string $name
 	 *
 	 * @return boolean
 	 */

@@ -1,15 +1,17 @@
 <?php namespace CodeIgniter\Session;
 
-use Config\Logger;
-use Tests\Support\Log\TestLogger;
-use Tests\Support\Session\MockSession;
+use CodeIgniter\Session\Exceptions\SessionException;
 use CodeIgniter\Session\Handlers\FileHandler;
+use CodeIgniter\Test\Mock\MockSession;
+use CodeIgniter\Test\TestLogger;
+use Config\App as AppConfig;
+use Config\Logger;
 
 /**
  * @runTestsInSeparateProcesses
  * @preserveGlobalState         disabled
  */
-class SessionTest extends \CIUnitTestCase
+class SessionTest extends \CodeIgniter\Test\CIUnitTestCase
 {
 	protected function setUp(): void
 	{
@@ -37,12 +39,17 @@ class SessionTest extends \CIUnitTestCase
 			'cookiePrefix'             => '',
 			'cookiePath'               => '/',
 			'cookieSecure'             => false,
+			'cookieSameSite'           => 'Lax',
 		];
 
-		$config = array_merge($defaults, $options);
-		$config = (object) $config;
+		$config    = array_merge($defaults, $options);
+		$appConfig = new AppConfig();
+		foreach ($config as $key => $c)
+		{
+			$appConfig->$key = $c;
+		}
 
-		$session = new MockSession(new FileHandler($config, '127.0.0.1'), $config);
+		$session = new MockSession(new FileHandler($appConfig, '127.0.0.1'), $appConfig);
 		$session->setLogger(new TestLogger(new Logger()));
 
 		return $session;
@@ -127,6 +134,28 @@ class SessionTest extends \CIUnitTestCase
 		$session->start();
 
 		$this->assertNull($session->get('foo'));
+	}
+
+	public function testGetReturnsNullWhenNotFoundWithXmlHttpRequest()
+	{
+		$_SERVER['HTTP_X_REQUESTED_WITH'] = 'xmlhttprequest';
+		$_SESSION                         = [];
+
+		$session = $this->getInstance();
+		$session->start();
+
+		$this->assertNull($session->get('foo'));
+	}
+
+	public function testGetReturnsEmptyArrayWhenWithXmlHttpRequest()
+	{
+		$_SERVER['HTTP_X_REQUESTED_WITH'] = 'xmlhttprequest';
+		$_SESSION                         = [];
+
+		$session = $this->getInstance();
+		$session->start();
+
+		$this->assertEquals([], $session->get());
 	}
 
 	public function testGetReturnsItemValueisZero()
@@ -510,4 +539,131 @@ class SessionTest extends \CIUnitTestCase
 
 		$this->assertEquals(['foo', 'bar'], $session->getTempKeys());
 	}
+
+	public function testGetDotKey()
+	{
+		$session = $this->getInstance();
+		$session->start();
+
+		$session->set('test.1', 'value');
+
+		$this->assertEquals('value', $session->get('test.1'));
+	}
+
+	public function testLaxSameSite()
+	{
+		$session = $this->getInstance(['cookieSameSite' => 'Lax']);
+		$session->start();
+
+		$cookies = $session->cookies;
+		$this->assertCount(1, $cookies);
+
+		if (PHP_VERSION_ID < 70300)
+		{
+			$this->assertCount(7, $cookies[0]);
+			$this->assertStringContainsString('samesite=Lax', $cookies[0][3]);
+		}
+		else
+		{
+			$this->assertCount(3, $cookies[0]);
+			$this->assertIsArray($cookies[0][2]);
+			$this->assertArrayHasKey('samesite', $cookies[0][2]);
+			$this->assertEquals('Lax', $cookies[0][2]['samesite']);
+		}
+	}
+
+	public function testNoneSameSite()
+	{
+		$session = $this->getInstance(['cookieSameSite' => 'None']);
+		$session->start();
+
+		$cookies = $session->cookies;
+		$this->assertCount(1, $cookies);
+
+		if (PHP_VERSION_ID < 70300)
+		{
+			$this->assertCount(7, $cookies[0]);
+			$this->assertStringContainsString('samesite=None', $cookies[0][3]);
+		}
+		else
+		{
+			$this->assertCount(3, $cookies[0]);
+			$this->assertIsArray($cookies[0][2]);
+			$this->assertArrayHasKey('samesite', $cookies[0][2]);
+			$this->assertEquals('None', $cookies[0][2]['samesite']);
+		}
+	}
+
+	public function testNoSameSite()
+	{
+		$session = $this->getInstance(['cookieSameSite' => '']);
+		$session->start();
+
+		$cookies = $session->cookies;
+		$this->assertCount(1, $cookies);
+
+		if (PHP_VERSION_ID < 70300)
+		{
+			$this->assertCount(7, $cookies[0]);
+			$this->assertStringNotContainsString('samesite', $cookies[0][3]);
+		}
+		else
+		{
+			$this->assertCount(3, $cookies[0]);
+			$this->assertIsArray($cookies[0][2]);
+			$this->assertArrayNotHasKey('samesite', $cookies[0][2]);
+		}
+	}
+
+	public function testInvalidSameSite()
+	{
+		$this->expectException(SessionException::class);
+		$this->expectExceptionMessage(lang('HTTP.invalidSameSiteSetting', ['Invalid']));
+
+		$session = $this->getInstance(['cookieSameSite' => 'Invalid']);
+		$session->start();
+	}
+
+	public function testExpires()
+	{
+		$session = $this->getInstance(['sessionExpiration' => 8000]);
+		$session->start();
+
+		$cookies = $session->cookies;
+		$this->assertCount(1, $cookies);
+
+		if (PHP_VERSION_ID < 70300)
+		{
+			$this->assertCount(7, $cookies[0]);
+			$this->assertGreaterThan(8000, $cookies[0][2]);
+		}
+		else
+		{
+			$this->assertCount(3, $cookies[0]);
+			$this->assertIsArray($cookies[0][2]);
+			$this->assertGreaterThan(8000, $cookies[0][2]['expires']);
+		}
+	}
+
+	public function testExpiresOnClose()
+	{
+		$session = $this->getInstance(['sessionExpiration' => 0]);
+		$session->start();
+
+		$cookies = $session->cookies;
+		$this->assertCount(1, $cookies);
+
+		if (PHP_VERSION_ID < 70300)
+		{
+			$this->assertCount(7, $cookies[0]);
+			$this->assertEquals(0, $cookies[0][2]);
+		}
+		else
+		{
+			$this->assertCount(3, $cookies[0]);
+			$this->assertIsArray($cookies[0][2]);
+			$this->assertEquals(0, $cookies[0][2]['expires']);
+		}
+	}
+
 }

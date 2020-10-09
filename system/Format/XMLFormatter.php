@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -40,22 +40,24 @@
 namespace CodeIgniter\Format;
 
 use CodeIgniter\Format\Exceptions\FormatException;
+use Config\Format;
 
 /**
  * XML data formatter
  */
 class XMLFormatter implements FormatterInterface
 {
-
 	/**
 	 * Takes the given data and formats it.
 	 *
-	 * @param $data
+	 * @param mixed $data
 	 *
 	 * @return string|boolean (XML string | false)
 	 */
 	public function format($data)
 	{
+		$config = new Format();
+
 		// SimpleXML is installed but default
 		// but best to check, and then provide a fallback.
 		if (! extension_loaded('simplexml'))
@@ -66,14 +68,13 @@ class XMLFormatter implements FormatterInterface
 			// @codeCoverageIgnoreEnd
 		}
 
-		$output = new \SimpleXMLElement('<?xml version="1.0"?><response></response>');
+		$options = $config->formatterOptions['application/xml'] ?? 0;
+		$output  = new \SimpleXMLElement('<?xml version="1.0"?><response></response>', $options);
 
-		$this->arrayToXML((array)$data, $output);
+		$this->arrayToXML((array) $data, $output);
 
 		return $output->asXML();
 	}
-
-	//--------------------------------------------------------------------
 
 	/**
 	 * A recursive method to convert an array into a valid XML string.
@@ -91,23 +92,41 @@ class XMLFormatter implements FormatterInterface
 		{
 			if (is_array($value))
 			{
-				if (! is_numeric($key))
-				{
-					$subnode = $output->addChild("$key");
-					$this->arrayToXML($value, $subnode);
-				}
-				else
-				{
-					$subnode = $output->addChild("item{$key}");
-					$this->arrayToXML($value, $subnode);
-				}
+				$key     = $this->normalizeXMLTag($key);
+				$subnode = $output->addChild("$key");
+				$this->arrayToXML($value, $subnode);
 			}
 			else
 			{
+				$key = $this->normalizeXMLTag($key);
 				$output->addChild("$key", htmlspecialchars("$value"));
 			}
 		}
 	}
 
-	//--------------------------------------------------------------------
+	/**
+	 * Normalizes tags into the allowed by W3C.
+	 * Regex adopted from this StackOverflow answer.
+	 *
+	 * @param string|integer $key
+	 *
+	 * @return string
+	 *
+	 * @see https://stackoverflow.com/questions/60001029/invalid-characters-in-xml-tag-name
+	 */
+	protected function normalizeXMLTag($key)
+	{
+		$startChar = 'A-Z_a-z' .
+			'\\x{C0}-\\x{D6}\\x{D8}-\\x{F6}\\x{F8}-\\x{2FF}\\x{370}-\\x{37D}' .
+			'\\x{37F}-\\x{1FFF}\\x{200C}-\\x{200D}\\x{2070}-\\x{218F}' .
+			'\\x{2C00}-\\x{2FEF}\\x{3001}-\\x{D7FF}\\x{F900}-\\x{FDCF}' .
+			'\\x{FDF0}-\\x{FFFD}\\x{10000}-\\x{EFFFF}';
+		$validName = $startChar . '\\.\\d\\x{B7}\\x{300}-\\x{36F}\\x{203F}-\\x{2040}';
+
+		$key = trim($key);
+		$key = preg_replace("/[^{$validName}-]+/u", '', $key);
+		$key = preg_replace("/^[^{$startChar}]+/u", 'item$0', $key);
+
+		return preg_replace('/^(xml).*/iu', 'item$0', $key); // XML is a reserved starting word
+	}
 }

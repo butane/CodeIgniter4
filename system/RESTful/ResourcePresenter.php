@@ -7,7 +7,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 3.0.0
@@ -53,15 +53,15 @@ class ResourcePresenter extends Controller
 
 	/**
 	 *
-	 * @var string Name of the model class managing this resource's data
+	 * @var string|null Name of the model class managing this resource's data
 	 */
-	protected $modelName = null;
+	protected $modelName;
 
 	/**
 	 *
-	 * @var \CodeIgniter\Model the model holding this resource's data
+	 * @var \CodeIgniter\Model|null the model holding this resource's data
 	 */
-	protected $model = null;
+	protected $model;
 
 	//--------------------------------------------------------------------
 
@@ -88,7 +88,7 @@ class ResourcePresenter extends Controller
 	/**
 	 * Present a view to present a specific resource object
 	 *
-	 * @param  type $id
+	 * @param  mixed $id
 	 * @return string
 	 */
 	public function show($id = null)
@@ -99,7 +99,6 @@ class ResourcePresenter extends Controller
 	/**
 	 * Present a view to present a new single resource object
 	 *
-	 * @param  type $id
 	 * @return string
 	 */
 	public function new()
@@ -121,7 +120,7 @@ class ResourcePresenter extends Controller
 	/**
 	 * Present a view to confirm the deletion of a specific resource object
 	 *
-	 * @param  type $id
+	 * @param  mixed $id
 	 * @return string
 	 */
 	public function remove($id = null)
@@ -132,7 +131,7 @@ class ResourcePresenter extends Controller
 	/**
 	 * Process the deletion of a specific resource object
 	 *
-	 * @param  type $id
+	 * @param  mixed $id
 	 * @return string
 	 */
 	public function delete($id = null)
@@ -143,7 +142,7 @@ class ResourcePresenter extends Controller
 	/**
 	 * Present a view to edit the properties of a specific resource object
 	 *
-	 * @param  type $id
+	 * @param  mixed $id
 	 * @return string
 	 */
 	public function edit($id = null)
@@ -155,7 +154,7 @@ class ResourcePresenter extends Controller
 	 * Process the updating, full or partial, of a specific resource object.
 	 * This should be a POST.
 	 *
-	 * @param  type $id
+	 * @param  mixed $id
 	 * @return string
 	 */
 	public function update($id = null)
@@ -193,7 +192,7 @@ class ResourcePresenter extends Controller
 		{
 			if (class_exists($this->modelName))
 			{
-				$this->model = new $this->modelName;
+				$this->model = model($this->modelName);
 			}
 		}
 

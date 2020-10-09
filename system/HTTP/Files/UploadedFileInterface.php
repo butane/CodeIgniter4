@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -136,7 +136,7 @@ interface UploadedFileInterface
 	 * Implementations SHOULD return the value stored in the "name" key of
 	 * the file in the $_FILES array.
 	 *
-	 * @return string|null The filename sent by the client or null if none
+	 * @return string The filename sent by the client or null if none
 	 *     was provided.
 	 */
 	public function getName(): string;
@@ -157,7 +157,7 @@ interface UploadedFileInterface
 	 * was uploaded. This is NOT a trusted source.
 	 * For a trusted version, use guessExtension() instead.
 	 *
-	 * @return string|null
+	 * @return string
 	 */
 	public function getClientExtension(): string;
 
@@ -168,7 +168,7 @@ interface UploadedFileInterface
 	 * This is NOT a trusted value.
 	 * For a trusted version, use getMimeType() instead.
 	 *
-	 * @return string|null
+	 * @return string
 	 */
 	public function getClientMimeType(): string;
 

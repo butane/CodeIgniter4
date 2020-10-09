@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -42,7 +42,6 @@ namespace CodeIgniter\Commands\Database;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 use Config\Services;
-use Config\Autoload;
 
 /**
  * Displays a list of all migrations and whether they've been run or not.
@@ -51,7 +50,6 @@ use Config\Autoload;
  */
 class MigrateStatus extends BaseCommand
 {
-
 	/**
 	 * The group the command is lumped under
 	 * when listing commands.
@@ -79,7 +77,7 @@ class MigrateStatus extends BaseCommand
 	 *
 	 * @var string
 	 */
-	protected $usage = 'migrate:status [Options]';
+	protected $usage = 'migrate:status [options]';
 
 	/**
 	 * the Command's Arguments
@@ -100,12 +98,16 @@ class MigrateStatus extends BaseCommand
 	/**
 	 * Namespaces to ignore when looking for migrations.
 	 *
-	 * @var type
+	 * @var array
 	 */
 	protected $ignoredNamespaces = [
 		'CodeIgniter',
 		'Config',
 		'Tests\Support',
+		'Kint',
+		'Laminas\ZendFrameworkBridge',
+		'Laminas\Escaper',
+		'Psr\Log',
 	];
 
 	/**
@@ -113,69 +115,92 @@ class MigrateStatus extends BaseCommand
 	 *
 	 * @param array $params
 	 */
-	public function run(array $params = [])
+	public function run(array $params)
 	{
 		$runner = Services::migrations();
+		$group  = $params['g'] ?? CLI::getOption('g');
 
-		$group = $params['-g'] ?? CLI::getOption('g');
-
-		if (! is_null($group))
+		if (is_string($group))
 		{
 			$runner->setGroup($group);
 		}
 
-		// Get all namespaces from  PSR4 paths.
-		$config     = new Autoload();
-		$namespaces = $config->psr4;
+		// Get all namespaces
+		$namespaces = Services::autoloader()->getNamespace();
 
-		// Loop for all $namespaces
+		// Collection of migration status
+		$status = [];
+
 		foreach ($namespaces as $namespace => $path)
 		{
-			if (in_array($namespace, $this->ignoredNamespaces))
+			if (in_array($namespace, $this->ignoredNamespaces, true))
 			{
 				continue;
 			}
 
-			$runner->setNamespace($namespace);
-			$migrations = $runner->findMigrations();
-			$history    = $runner->getHistory();
+			if (APP_NAMESPACE !== 'App' && $namespace === 'App')
+			{
+				continue; // @codeCoverageIgnore
+			}
 
-			CLI::write($namespace);
+			$migrations = $runner->findNamespaceMigrations($namespace);
 
 			if (empty($migrations))
 			{
-				CLI::error(lang('Migrations.noneFound'));
 				continue;
 			}
 
+			$history = $runner->getHistory();
 			ksort($migrations);
-
-			$max = 0;
-			foreach ($migrations as $version => $migration)
-			{
-				$file                       = substr($migration->name, strpos($migration->name, $version . '_'));
-				$migrations[$version]->name = $file;
-
-				$max = max($max, strlen($file));
-			}
-
-			CLI::write('  ' . str_pad(lang('Migrations.filename'), $max + 4) . lang('Migrations.on'), 'yellow');
 
 			foreach ($migrations as $uid => $migration)
 			{
-				$date = '';
+				$migrations[$uid]->name = mb_substr($migration->name, mb_strpos($migration->name, $uid . '_'));
+
+				$date  = '---';
+				$group = '---';
+				$batch = '---';
+
 				foreach ($history as $row)
 				{
-					if ($runner->getObjectUid($row) !== $uid)
+					if ($runner->getObjectUid($row) !== $migration->uid)
 					{
 						continue;
 					}
 
-					$date = date('Y-m-d H:i:s', $row->time);
+					$date  = date('Y-m-d H:i:s', $row->time);
+					$group = $row->group;
+					$batch = $row->batch;
 				}
-				CLI::write(str_pad('  ' . $migration->name, $max + 6) . ($date ? $date : '---'));
+
+				$status[] = [
+					$namespace,
+					$migration->version,
+					$migration->name,
+					$group,
+					$date,
+					$batch,
+				];
 			}
 		}
-	}
 
+		if ($status)
+		{
+			$headers = [
+				CLI::color(lang('Migrations.namespace'), 'yellow'),
+				CLI::color(lang('Migrations.version'), 'yellow'),
+				CLI::color(lang('Migrations.filename'), 'yellow'),
+				CLI::color(lang('Migrations.group'), 'yellow'),
+				CLI::color(str_replace(': ', '', lang('Migrations.on')), 'yellow'),
+				CLI::color(lang('Migrations.batch'), 'yellow'),
+			];
+
+			CLI::table($status, $headers);
+
+			return;
+		}
+
+		CLI::error(lang('Migrations.noneFound'), 'light_gray', 'red');
+		CLI::newLine();
+	}
 }

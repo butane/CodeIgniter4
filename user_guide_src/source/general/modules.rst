@@ -20,11 +20,11 @@ that CodeIgniter uses. While any code can use the PSR4 autoloader and namespaces
 modules is to namespace your code and add it to **app/Config/Autoload.php**, in the ``psr4`` section.
 
 For example, let's say we want to keep a simple blog module that we can re-use between applications. We might create
-folder with our company name, Acme, to store all of our modules within. We will put it right alongside our **application**
+folder with our company name, Acme, to store all of our modules within. We will put it right alongside our **app**
 directory in the main project root::
 
     /acme        // New modules directory
-    /application
+    /app
     /public
     /system
     /tests
@@ -78,13 +78,10 @@ file types, including:
 
 This is configured in the file **app/Config/Modules.php**.
 
-The auto-discovery system works by scanning any psr4 namespaces that have been defined within **Config/Autoload.php**
-for familiar directories/files.
+The auto-discovery system works by scanning for particular directories and files within psr4 namespaces that have been defined in **Config/Autoload.php**.
 
-When at the **acme** namespace above, we would need to make one small adjustment to make it so the files could be found:
-each "module" within the namespace would have to have it's own namespace defined there. **Acme** would be changed
-to **Acme\Blog**. Once your module folder has been defined, the discover process would look for a Routes file, for example,
-at **/acme/Blog/Config/Routes.php**, just as if it was another application.
+To make auto-discovery work for our **Blog** namespace, we need to make one small adjustment.
+**Acme** needs to be changed to **Acme\\Blog** because each "module" within the namespace needs to be fully defined. Once your module folder path is defined, the discovery process would look for discoverable items on that path and should, for example, find the routes file at **/acme/Blog/Config/Routes.php**.
 
 Enable/Disable Discover
 =======================

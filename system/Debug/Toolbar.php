@@ -7,7 +7,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -38,7 +38,6 @@
 
 namespace CodeIgniter\Debug;
 
-use CodeIgniter\Config\BaseConfig;
 use CodeIgniter\Debug\Toolbar\Collectors\History;
 use CodeIgniter\Format\JSONFormatter;
 use CodeIgniter\Format\XMLFormatter;
@@ -46,6 +45,7 @@ use CodeIgniter\HTTP\DownloadResponse;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use Config\Services;
+use Config\Toolbar as ToolbarConfig;
 
 /**
  * Debug Toolbar
@@ -62,7 +62,7 @@ class Toolbar
 	/**
 	 * Toolbar configuration settings.
 	 *
-	 * @var BaseConfig
+	 * @var ToolbarConfig
 	 */
 	protected $config;
 
@@ -78,9 +78,9 @@ class Toolbar
 	/**
 	 * Constructor
 	 *
-	 * @param BaseConfig $config
+	 * @param ToolbarConfig $config
 	 */
-	public function __construct(BaseConfig $config)
+	public function __construct(ToolbarConfig $config)
 	{
 		$this->config = $config;
 
@@ -118,7 +118,7 @@ class Toolbar
 		$data['startTime']       = $startTime;
 		$data['totalTime']       = $totalTime * 1000;
 		$data['totalMemory']     = number_format((memory_get_peak_usage()) / 1024 / 1024, 3);
-		$data['segmentDuration'] = $this->roundTo($data['totalTime'] / 7, 5);
+		$data['segmentDuration'] = $this->roundTo($data['totalTime'] / 7);
 		$data['segmentCount']    = (int) ceil($data['totalTime'] / $data['segmentDuration']);
 		$data['CI_VERSION']      = \CodeIgniter\CodeIgniter::CI_VERSION;
 		$data['collectors']      = [];
@@ -167,7 +167,7 @@ class Toolbar
 			$data['vars']['post'][esc($name)] = is_array($value) ? '<pre>' . esc(print_r($value, true)) . '</pre>' : esc($value);
 		}
 
-		foreach ($request->getHeaders() as $header => $value)
+		foreach ($request->getHeaders() as $value)
 		{
 			if (empty($value))
 			{
@@ -329,8 +329,8 @@ class Toolbar
 	 *
 	 * @param  RequestInterface  $request
 	 * @param  ResponseInterface $response
-	 * @global type $app
-	 * @return type
+	 * @global \CodeIgniter\CodeIgniter $app
+	 * @return void
 	 */
 	public function prepare(RequestInterface $request = null, ResponseInterface $response = null)
 	{
@@ -393,7 +393,7 @@ class Toolbar
 			if (strpos($response->getBody(), '<head>') !== false)
 			{
 				$response->setBody(
-						str_replace('<head>', $script . '<head>', $response->getBody())
+						str_replace('<head>', '<head>' . $script, $response->getBody())
 				);
 
 				return;
@@ -415,6 +415,7 @@ class Toolbar
 			return;
 		}
 
+		// @codeCoverageIgnoreStart
 		$request = Services::request();
 
 		// If the request contains '?debugbar then we're
@@ -459,6 +460,7 @@ class Toolbar
 			http_response_code(404);
 			exit; // Exit here is needed to avoid load the index page
 		}
+		// @codeCoverageIgnoreEnd
 	}
 
 	/**

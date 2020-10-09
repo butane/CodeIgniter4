@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -39,8 +39,8 @@
 
 namespace CodeIgniter\Debug\Toolbar\Collectors;
 
-use Config\Services;
 use CodeIgniter\View\RendererInterface;
+use Config\Services;
 
 /**
  * Views collector
@@ -109,9 +109,9 @@ class Events extends BaseCollector
 	{
 		$data = [];
 
-		$rows = $this->viewer->getPerformanceData();
+		$rows = $this->viewer->getPerformanceData(); // @phpstan-ignore-line
 
-		foreach ($rows as $name => $info)
+		foreach ($rows as $info)
 		{
 			$data[] = [
 				'name'      => 'View: ' . $info['view'],
@@ -145,15 +145,20 @@ class Events extends BaseCollector
 			{
 				$data['events'][$key] = [
 					'event'    => $key,
-					'duration' => number_format(($row['end'] - $row['start']) * 1000, 2),
+					'duration' => ($row['end'] - $row['start']) * 1000,
 					'count'    => 1,
 				];
 
 				continue;
 			}
 
-			$data['events'][$key]['duration'] += number_format(($row['end'] - $row['start']) * 1000, 2);
+			$data['events'][$key]['duration'] += ($row['end'] - $row['start']) * 1000;
 			$data['events'][$key]['count']++;
+		}
+
+		foreach ($data['events'] as &$row)
+		{
+			$row['duration'] = number_format($row['duration'], 2);
 		}
 
 		return $data;

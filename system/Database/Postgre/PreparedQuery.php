@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -39,8 +39,8 @@
 
 namespace CodeIgniter\Database\Postgre;
 
-use CodeIgniter\Database\PreparedQueryInterface;
 use CodeIgniter\Database\BasePreparedQuery;
+use CodeIgniter\Database\PreparedQueryInterface;
 
 /**
  * Prepared query for Postgre
@@ -60,7 +60,7 @@ class PreparedQuery extends BasePreparedQuery implements PreparedQueryInterface
 	 * The result resource from a successful
 	 * pg_exec. Or false.
 	 *
-	 * @var
+	 * @var Result|boolean
 	 */
 	protected $result;
 
@@ -82,7 +82,7 @@ class PreparedQuery extends BasePreparedQuery implements PreparedQueryInterface
 	 */
 	public function _prepare(string $sql, array $options = [])
 	{
-		$this->name = random_int(1, 10000000000000000);
+		$this->name = (string) random_int(1, 10000000000000000);
 
 		$sql = $this->parameterize($sql);
 
@@ -148,12 +148,10 @@ class PreparedQuery extends BasePreparedQuery implements PreparedQueryInterface
 		// Track our current value
 		$count = 0;
 
-		$sql = preg_replace_callback('/\?/', function ($matches) use (&$count) {
+		return preg_replace_callback('/\?/', function ($matches) use (&$count) {
 			$count ++;
 			return "\${$count}";
 		}, $sql);
-
-		return $sql;
 	}
 
 	//--------------------------------------------------------------------

@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -103,10 +103,10 @@ class Connection extends BaseConnection implements ConnectionInterface
 		{
 			$hostname = ($persistent === true) ? 'p:' . $this->hostname : $this->hostname;
 			$port     = empty($this->port) ? null : $this->port;
-			$socket   = null;
+			$socket   = '';
 		}
 
-		$client_flags = ($this->compress === true) ? MYSQLI_CLIENT_COMPRESS : 0;
+		$clientFlags  = ($this->compress === true) ? MYSQLI_CLIENT_COMPRESS : 0;
 		$this->mysqli = mysqli_init();
 
 		mysqli_report(MYSQLI_REPORT_ALL & ~MYSQLI_REPORT_INDEX);
@@ -161,11 +161,11 @@ class Connection extends BaseConnection implements ConnectionInterface
 					// https://bugs.php.net/bug.php?id=68344
 					elseif (defined('MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT') && version_compare($this->mysqli->client_info, '5.6', '>='))
 					{
-						$client_flags += MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT;
+						$clientFlags += MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT;
 					}
 				}
 
-				$client_flags += MYSQLI_CLIENT_SSL;
+				$clientFlags += MYSQLI_CLIENT_SSL;
 				$this->mysqli->ssl_set(
 					$ssl['key'] ?? null, $ssl['cert'] ?? null, $ssl['ca'] ?? null,
 					$ssl['capath'] ?? null, $ssl['cipher'] ?? null
@@ -176,11 +176,11 @@ class Connection extends BaseConnection implements ConnectionInterface
 		try
 		{
 			if ($this->mysqli->real_connect($hostname, $this->username, $this->password,
-				$this->database, $port, $socket, $client_flags)
+				$this->database, $port, $socket, $clientFlags)
 			)
 			{
 				// Prior to version 5.7.3, MySQL silently downgrades to an unencrypted connection if SSL setup fails
-				if (($client_flags & MYSQLI_CLIENT_SSL) && version_compare($this->mysqli->client_info, '5.7.3', '<=')
+				if (($clientFlags & MYSQLI_CLIENT_SSL) && version_compare($this->mysqli->client_info, '5.7.3', '<=')
 					&& empty($this->mysqli->query("SHOW STATUS LIKE 'ssl_cipher'")
 										  ->fetch_object()->Value)
 				)
@@ -203,7 +203,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 						"Database: Unable to set the configured connection charset ('{$this->charset}').");
 					$this->mysqli->close();
 
-					if ($this->db->debug)
+					if ($this->DBDebug)
 					{
 						throw new DatabaseException('Unable to set client connection character set: ' . $this->charset);
 					}
@@ -222,7 +222,7 @@ class Connection extends BaseConnection implements ConnectionInterface
 			$msg = str_replace($this->username, '****', $msg);
 			$msg = str_replace($this->password, '****', $msg);
 
-			throw new \mysqli_sql_exception($msg, $e->getCode(), $e);
+			throw new DatabaseException($msg, $e->getCode(), $e);
 		}
 
 		return false;
@@ -326,8 +326,19 @@ class Connection extends BaseConnection implements ConnectionInterface
 				$res->free();
 			}
 		}
-
-		return $this->connID->query($this->prepQuery($sql));
+		try
+		{
+			return $this->connID->query($this->prepQuery($sql));
+		}
+		catch (\mysqli_sql_exception $e)
+		{
+			log_message('error', $e);
+			if ($this->DBDebug)
+			{
+				throw $e;
+			}
+		}
+		return false;
 	}
 
 	//--------------------------------------------------------------------
@@ -375,11 +386,6 @@ class Connection extends BaseConnection implements ConnectionInterface
 	 */
 	protected function _escapeString(string $str): string
 	{
-		if (is_bool($str))
-		{
-			return $str;
-		}
-
 		if (! $this->connID)
 		{
 			$this->initialize();
@@ -424,8 +430,6 @@ class Connection extends BaseConnection implements ConnectionInterface
 			'\\' . '_',
 		], $str
 		);
-
-		return $str;
 	}
 
 	//--------------------------------------------------------------------

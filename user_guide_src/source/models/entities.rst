@@ -96,13 +96,13 @@ Now that all of the pieces are in place, you would work with the Entity class as
     $userModel->save($user);
 
     // Create
-    $user = new App\Entities\User();
+    $user = new \App\Entities\User();
     $user->username = 'foo';
     $user->email    = 'foo@example.com';
     $userModel->save($user);
 
 You may have noticed that the User class has not set any properties for the columns, but you can still
-access them as if they were public properties. The base class, **CodeIgniter\Entity**, takes care of this for you, as
+access them as if they were public properties. The base class, **CodeIgniter\\Entity**, takes care of this for you, as
 well as providing the ability to check the properties with **isset()**, or **unset()** the property, and keep track
 of what columns have changed since the object was created or pulled from the database.
 
@@ -122,18 +122,26 @@ on your entities without worrying much about stray fields getting saved incorrec
 
     $data = $this->request->getPost();
 
-    $user = new App\Entities\User();
+    $user = new \App\Entities\User();
     $user->fill($data);
     $userModel->save($user);
 
-You can also pass the data in the constructor and the data will be passed through the `fill()` method during instantiation.
+You can also pass the data in the constructor and the data will be passed through the ``fill()`` method during instantiation.
 
 ::
 
     $data = $this->request->getPost();
 
-    $user = new App\Entities\User($data);
+    $user = new \App\Entities\User($data);
     $userModel->save($user);
+
+Bulk Accessing Properties
+-------------------------
+
+The Entity class has two methods to extract all available properties into an array: ``toArray()`` and ``toRawArray()``.
+Using the raw version will bypass magic "getter" methods and casts. Both methods can take a boolean first parameter
+to specify whether returned values should be filtered by those that have changed, and a boolean final parameter to
+make the method recursive, in case of nested Entities.
 
 Handling Business Logic
 =======================
@@ -153,7 +161,7 @@ Here's an updated User entity to provide some examples of how this could be used
     {
         public function setPassword(string $pass)
         {
-            $this->password = password_hash($pass, PASSWORD_BCRYPT);
+            $this->attributes['password'] = password_hash($pass, PASSWORD_BCRYPT);
 
             return $this;
         }
@@ -219,12 +227,12 @@ As an example, imagine you have the simplified User Entity that is used througho
     class User extends Entity
     {
         protected $attributes = [
-            'id' => null;
-            'name' => null;        // Represents a username
-            'email' => null;
-            'password' => null;
-            'created_at' => null;
-            'updated_at' => null;
+            'id' => null,
+            'name' => null,        // Represents a username
+            'email' => null,
+            'password' => null,
+            'created_at' => null,
+            'updated_at' => null,
         ];
     }
 
@@ -244,12 +252,12 @@ simply map the ``full_name`` column in the database to the ``$name`` property, a
     class User extends Entity
     {
         protected $attributes = [
-            'id' => null;
-            'name' => null;        // Represents a username
-            'email' => null;
-            'password' => null;
-            'created_at' => null;
-            'updated_at' => null;
+            'id' => null,
+            'name' => null,        // Represents a username
+            'email' => null,
+            'password' => null,
+            'created_at' => null,
+            'updated_at' => null,
         ];
 
         protected $datamap = [
@@ -291,7 +299,7 @@ You can define which properties are automatically converted by adding the name t
 Now, when any of those properties are set, they will be converted to a Time instance, using the application's
 current timezone, as set in **app/Config/App.php**::
 
-    $user = new App\Entities\User();
+    $user = new \App\Entities\User();
 
     // Converted to Time instance
     $user->created_at = 'April 15, 2017 10:30:00';
@@ -333,7 +341,7 @@ Array/Json casting is especially useful with fields that store serialized arrays
 * a **json**, they will automatically be set as an value of json_decode($value, false),
 * a **json-array**, they will automatically be set as an value of json_decode($value, true),
 
-when you read the property's value.
+when you set the property's value.
 Unlike the rest of the data types that you can cast properties into, the:
 
 * **array** cast type will serialize,
@@ -347,10 +355,10 @@ the value whenever the property is set::
 
     class User extends Entity
     {
-        protected $casts => [
+        protected $casts = [
             'options' => 'array',
-		    'options_object' => 'json',
-		    'options_array' => 'json-array'
+	    'options_object' => 'json',
+	    'options_array' => 'json-array'
         ];
     }
 

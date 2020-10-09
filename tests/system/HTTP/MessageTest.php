@@ -4,7 +4,7 @@ namespace CodeIgniter\HTTP;
 
 use CodeIgniter\HTTP\Exceptions\HTTPException;
 
-class MessageTest extends \CIUnitTestCase
+class MessageTest extends \CodeIgniter\Test\CIUnitTestCase
 {
 
 	/**
@@ -207,6 +207,55 @@ class MessageTest extends \CIUnitTestCase
 		$this->message->setHeader('Accept', ['json', 'html', 'xml']);
 
 			$this->assertEquals('json, html, xml', $this->message->getHeaderLine('Accept'));
+	}
+
+	public function provideArrayHeaderValue()
+	{
+		return [
+			'existing for next not append' => [
+				[
+					'json',
+					'html',
+					'xml',
+				],
+			],
+			'existing for next append'     => [
+				[
+					'json',
+					'html',
+				],
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider provideArrayHeaderValue
+	 */
+	public function testSetHeaderWithExistingArrayValuesAppendStringValue($arrayHeaderValue)
+	{
+		$this->message->setHeader('Accept', $arrayHeaderValue);
+		$this->message->setHeader('Accept', 'xml');
+
+		$this->assertEquals('json, html, xml', $this->message->getHeaderLine('Accept'));
+	}
+
+	/**
+	 * @dataProvider provideArrayHeaderValue
+	 */
+	public function testSetHeaderWithExistingArrayValuesAppendArrayValue($arrayHeaderValue)
+	{
+		$this->message->setHeader('Accept', $arrayHeaderValue);
+		$this->message->setHeader('Accept', ['xml']);
+
+		$this->assertEquals('json, html, xml', $this->message->getHeaderLine('Accept'));
+	}
+
+	public function testSetHeaderWithExistingArrayValuesAppendNullValue()
+	{
+		$this->message->setHeader('Accept', ['json', 'html', 'xml']);
+		$this->message->setHeader('Accept', null);
+
+		$this->assertEquals('json, html, xml', $this->message->getHeaderLine('Accept'));
 	}
 
 	//--------------------------------------------------------------------

@@ -1,6 +1,5 @@
 <?php
 
-
 /**
  * CodeIgniter
  *
@@ -9,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -40,10 +39,11 @@
 
 namespace CodeIgniter\HTTP;
 
-use Config\App;
-use Config\Format;
 use CodeIgniter\HTTP\Exceptions\HTTPException;
 use CodeIgniter\Pager\PagerInterface;
+use Config\Services;
+use DateTime;
+use DateTimeZone;
 
 /**
  * Representation of an outgoing, getServer-side response.
@@ -205,6 +205,13 @@ class Response extends Message implements ResponseInterface
 	protected $cookieHTTPOnly = false;
 
 	/**
+	 * Cookie SameSite setting
+	 *
+	 * @var string
+	 */
+	protected $cookieSameSite = 'Lax';
+
+	/**
 	 * Stores all cookies that were set in the response.
 	 *
 	 * @var array
@@ -231,7 +238,7 @@ class Response extends Message implements ResponseInterface
 	/**
 	 * Constructor
 	 *
-	 * @param App $config
+	 * @param \Config\App $config
 	 */
 	public function __construct($config)
 	{
@@ -239,18 +246,21 @@ class Response extends Message implements ResponseInterface
 		// Also ensures that a Cache-control header exists.
 		$this->noCache();
 
-		// Are we enforcing a Content Security Policy?
-		if ($config->CSPEnabled === true)
-		{
-			$this->CSP        = new ContentSecurityPolicy(new \Config\ContentSecurityPolicy());
-			$this->CSPEnabled = true;
-		}
+		// We need CSP object even if not enabled to avoid calls to non existing methods
+		$this->CSP = new ContentSecurityPolicy(new \Config\ContentSecurityPolicy());
 
+		$this->CSPEnabled     = $config->CSPEnabled;
 		$this->cookiePrefix   = $config->cookiePrefix;
 		$this->cookieDomain   = $config->cookieDomain;
 		$this->cookiePath     = $config->cookiePath;
 		$this->cookieSecure   = $config->cookieSecure;
 		$this->cookieHTTPOnly = $config->cookieHTTPOnly;
+		$this->cookieSameSite = $config->cookieSameSite ?? $this->cookieSameSite;
+
+		if (! in_array(strtolower($this->cookieSameSite), ['', 'none', 'lax', 'strict'], true))
+		{
+			throw HTTPException::forInvalidSameSiteSetting($this->cookieSameSite);
+		}
 
 		// Default to an HTML Content-Type. Devs can override if needed.
 		$this->setContentType('text/html');
@@ -368,9 +378,9 @@ class Response extends Message implements ResponseInterface
 	 *
 	 * @return Response
 	 */
-	public function setDate(\DateTime $date)
+	public function setDate(DateTime $date)
 	{
-		$date->setTimezone(new \DateTimeZone('UTC'));
+		$date->setTimezone(new DateTimeZone('UTC'));
 
 		$this->setHeader('Date', $date->format('D, d M Y H:i:s') . ' GMT');
 
@@ -445,6 +455,7 @@ class Response extends Message implements ResponseInterface
 	 * Converts the $body into JSON and sets the Content Type header.
 	 *
 	 * @param array|string $body
+	 * @param boolean      $unencoded
 	 *
 	 * @return $this
 	 */
@@ -470,13 +481,7 @@ class Response extends Message implements ResponseInterface
 
 		if ($this->bodyFormat !== 'json')
 		{
-			/**
-			 * @var Format $config
-			 */
-			$config    = config(Format::class);
-			$formatter = $config->getFormatter('application/json');
-
-			$body = $formatter->format($body);
+			$body = Services::format()->getFormatter('application/json')->format($body);
 		}
 
 		return $body ?: null;
@@ -512,13 +517,7 @@ class Response extends Message implements ResponseInterface
 
 		if ($this->bodyFormat !== 'xml')
 		{
-			/**
-			 * @var Format $config
-			 */
-			$config    = config(Format::class);
-			$formatter = $config->getFormatter('application/xml');
-
-			$body = $formatter->format($body);
+			$body = Services::format()->getFormatter('application/xml')->format($body);
 		}
 
 		return $body;
@@ -537,21 +536,15 @@ class Response extends Message implements ResponseInterface
 	 * @throws \InvalidArgumentException If the body property is not string or array.
 	 */
 	protected function formatBody($body, string $format)
-	{    
+	{
 		$this->bodyFormat = ($format === 'json-unencoded' ? 'json' : $format);
-		$mime = "application/{$this->bodyFormat}";
+		$mime             = "application/{$this->bodyFormat}";
 		$this->setContentType($mime);
 
 		// Nothing much to do for a string...
 		if (! is_string($body) || $format === 'json-unencoded')
 		{
-			/**
-			 * @var Format $config
-			 */
-			$config    = config(Format::class);
-			$formatter = $config->getFormatter($mime);
-
-			$body = $formatter->format($body);
+			$body = Services::format()->getFormatter($mime)->format($body);
 		}
 
 		return $body;
@@ -719,7 +712,7 @@ class Response extends Message implements ResponseInterface
 		}
 
 		// HTTP Status
-		header(sprintf('HTTP/%s %s %s', $this->protocolVersion, $this->statusCode, $this->reason), true, $this->statusCode);
+		header(sprintf('HTTP/%s %s %s', $this->getProtocolVersion(), $this->statusCode, $this->reason), true, $this->statusCode);
 
 		// Send all of our headers
 		foreach ($this->getHeaders() as $name => $values)
@@ -786,7 +779,7 @@ class Response extends Message implements ResponseInterface
 		{
 			if ($method !== 'refresh')
 			{
-				$code = ($_SERVER['REQUEST_METHOD'] !== 'GET') ? 303 : 307;
+				$code = ($_SERVER['REQUEST_METHOD'] !== 'GET') ? 303 : ($code === 302 ? 307 : $code);
 			}
 		}
 
@@ -813,14 +806,15 @@ class Response extends Message implements ResponseInterface
 	 * Accepts an arbitrary number of binds (up to 7) or an associative
 	 * array in the first parameter containing all the values.
 	 *
-	 * @param string|array  $name     Cookie name or array containing binds
-	 * @param string        $value    Cookie value
-	 * @param string        $expire   Cookie expiration time in seconds
-	 * @param string        $domain   Cookie domain (e.g.: '.yourdomain.com')
-	 * @param string        $path     Cookie path (default: '/')
-	 * @param string        $prefix   Cookie name prefix
-	 * @param boolean|false $secure   Whether to only transfer cookies via SSL
-	 * @param boolean|false $httponly Whether only make the cookie accessible via HTTP (no javascript)
+	 * @param string|array $name     Cookie name or array containing binds
+	 * @param string       $value    Cookie value
+	 * @param string       $expire   Cookie expiration time in seconds
+	 * @param string       $domain   Cookie domain (e.g.: '.yourdomain.com')
+	 * @param string       $path     Cookie path (default: '/')
+	 * @param string       $prefix   Cookie name prefix
+	 * @param boolean      $secure   Whether to only transfer cookies via SSL
+	 * @param boolean      $httponly Whether only make the cookie accessible via HTTP (no javascript)
+	 * @param string|null  $samesite
 	 *
 	 * @return $this
 	 */
@@ -832,13 +826,14 @@ class Response extends Message implements ResponseInterface
 		$path = '/',
 		$prefix = '',
 		$secure = false,
-		$httponly = false
+		$httponly = false,
+		$samesite = null
 	)
 	{
 		if (is_array($name))
 		{
 			// always leave 'name' in last place, as the loop will break otherwise, due to $$item
-			foreach (['value', 'expire', 'domain', 'path', 'prefix', 'secure', 'httponly', 'name'] as $item)
+			foreach (['samesite', 'value', 'expire', 'domain', 'path', 'prefix', 'secure', 'httponly', 'name'] as $item)
 			{
 				if (isset($name[$item]))
 				{
@@ -872,6 +867,16 @@ class Response extends Message implements ResponseInterface
 			$httponly = $this->cookieHTTPOnly;
 		}
 
+		if (is_null($samesite))
+		{
+			$samesite = $this->cookieSameSite ?? '';
+		}
+
+		if (! in_array(strtolower($samesite), ['', 'none', 'lax', 'strict'], true))
+		{
+			throw HTTPException::forInvalidSameSiteSetting($samesite);
+		}
+
 		if (! is_numeric($expire))
 		{
 			$expire = time() - 86500;
@@ -881,7 +886,7 @@ class Response extends Message implements ResponseInterface
 			$expire = ($expire > 0) ? time() + $expire : 0;
 		}
 
-		$this->cookies[] = [
+		$cookie = [
 			'name'     => $prefix . $name,
 			'value'    => $value,
 			'expires'  => $expire,
@@ -890,6 +895,13 @@ class Response extends Message implements ResponseInterface
 			'secure'   => $secure,
 			'httponly' => $httponly,
 		];
+
+		if ($samesite !== '')
+		{
+			$cookie['samesite'] = $samesite;
+		}
+
+		$this->cookies[] = $cookie;
 
 		return $this;
 	}
@@ -987,11 +999,12 @@ class Response extends Message implements ResponseInterface
 			$prefix = $this->cookiePrefix;
 		}
 
-		$name = $prefix . $name;
+		$prefixedName = $prefix . $name;
 
+		$cookieHasFlag = false;
 		foreach ($this->cookies as &$cookie)
 		{
-			if ($cookie['name'] === $name)
+			if ($cookie['name'] === $prefixedName)
 			{
 				if (! empty($domain) && $cookie['domain'] !== $domain)
 				{
@@ -1003,12 +1016,27 @@ class Response extends Message implements ResponseInterface
 				}
 				$cookie['value']   = '';
 				$cookie['expires'] = '';
-
+				$cookieHasFlag     = true;
 				break;
 			}
 		}
 
+		if (! $cookieHasFlag)
+		{
+			$this->setCookie($name, '', '', $domain, $path, $prefix);
+		}
+
 		return $this;
+	}
+
+	/**
+	 * Returns all cookies currently set.
+	 *
+	 * @return array
+	 */
+	public function getCookies()
+	{
+		return $this->cookies;
 	}
 
 	/**
@@ -1023,10 +1051,35 @@ class Response extends Message implements ResponseInterface
 
 		foreach ($this->cookies as $params)
 		{
-			// PHP cannot unpack array with string keys
-			$params = array_values($params);
+			if (PHP_VERSION_ID < 70300)
+			{
+				// For PHP 7.2 we need to use the hacky method of setting SameSite in the path
+				if (isset($params['samesite']) && in_array(strtolower($params['samesite']), ['none', 'lax', 'strict'], true))
+				{
+					$params['path'] .= '; samesite=' . $params['samesite'];
+					unset($params['samesite']);
+				}
 
-			setcookie(...$params);
+				// PHP cannot unpack array with string keys
+				$params = array_values($params);
+				setcookie(...$params);
+			}
+			else
+			{
+				// PHP 7.3 and later have a signature for setcookie() with options array as third argument
+				// and SameSite is possible to set there
+				$name  = $params['name'];
+				$value = $params['value'];
+				unset($params['name'], $params['value']);
+
+				// If samesite is blank string, skip setting the attribute on the cookie
+				if (isset($params['samesite']) && $params['samesite'] === '')
+				{
+					unset($params['samesite']);
+				}
+
+				setcookie($name, $value, $params);
+			}
 		}
 	}
 

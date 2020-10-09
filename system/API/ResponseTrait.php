@@ -8,7 +8,7 @@
  * This content is released under the MIT License (MIT)
  *
  * Copyright (c) 2014-2019 British Columbia Institute of Technology
- * Copyright (c) 2019 CodeIgniter Foundation
+ * Copyright (c) 2019-2020 CodeIgniter Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * @package    CodeIgniter
  * @author     CodeIgniter Dev Team
- * @copyright  2019 CodeIgniter Foundation
+ * @copyright  2019-2020 CodeIgniter Foundation
  * @license    https://opensource.org/licenses/MIT	MIT License
  * @link       https://codeigniter.com
  * @since      Version 4.0.0
@@ -39,8 +39,8 @@
 
 namespace CodeIgniter\API;
 
-use Config\Format;
 use CodeIgniter\HTTP\Response;
+use Config\Services;
 
 /**
  * Response trait.
@@ -56,7 +56,6 @@ use CodeIgniter\HTTP\Response;
  */
 trait ResponseTrait
 {
-
 	/**
 	 * Allows child classes to override the
 	 * status code that is used in their API.
@@ -66,6 +65,7 @@ trait ResponseTrait
 	protected $codes = [
 		'created'                   => 201,
 		'deleted'                   => 200,
+		'updated'                   => 200,
 		'no_content'                => 204,
 		'invalid_request'           => 400,
 		'unsupported_response_type' => 400,
@@ -93,6 +93,22 @@ trait ResponseTrait
 		'not_implemented'           => 501,
 	];
 
+	/**
+	 * How to format the response data.
+	 * Either 'json' or 'xml'. If blank will be
+	 * determine through content negotiation.
+	 *
+	 * @var string
+	 */
+	protected $format = 'json';
+
+	/**
+	 * Current Formatter instance. This is usually set by ResponseTrait::format
+	 *
+	 * @var \CodeIgniter\Format\FormatterInterface
+	 */
+	protected $formatter;
+
 	//--------------------------------------------------------------------
 
 	/**
@@ -114,7 +130,8 @@ trait ResponseTrait
 
 			// Create the output var here in case of $this->response([]);
 			$output = null;
-		} // If data is null but status provided, keep the output empty.
+		}
+		// If data is null but status provided, keep the output empty.
 		elseif ($data === null && is_numeric($status))
 		{
 			$output = null;
@@ -125,8 +142,7 @@ trait ResponseTrait
 			$output = $this->format($data);
 		}
 
-		return $this->response->setBody($output)
-						->setStatusCode($status, $message);
+		return $this->response->setBody($output)->setStatusCode($status, $message);
 	}
 
 	//--------------------------------------------------------------------
@@ -135,7 +151,7 @@ trait ResponseTrait
 	 * Used for generic failures that no custom methods exist for.
 	 *
 	 * @param string|array $messages
-	 * @param integer|null $status        HTTP status code
+	 * @param integer      $status        HTTP status code
 	 * @param string|null  $code          Custom, API-specific, error code
 	 * @param string       $customMessage
 	 *
@@ -150,7 +166,7 @@ trait ResponseTrait
 
 		$response = [
 			'status'   => $status,
-			'error'    => $code === null ? $status : $code,
+			'error'    => $code ?? $status,
 			'messages' => $messages,
 		];
 
@@ -188,6 +204,19 @@ trait ResponseTrait
 	public function respondDeleted($data = null, string $message = '')
 	{
 		return $this->respond($data, $this->codes['deleted'], $message);
+	}
+
+	/**
+	 * Used after a resource has been successfully updated.
+	 *
+	 * @param mixed  $data    Data.
+	 * @param string $message Message.
+	 *
+	 * @return mixed
+	 */
+	public function respondUpdated($data = null, string $message = '')
+	{
+		return $this->respond($data, $this->codes['updated'], $message);
 	}
 
 	//--------------------------------------------------------------------
@@ -364,20 +393,25 @@ trait ResponseTrait
 			return $data;
 		}
 
-		// Determine correct response type through content negotiation
-		$config = new Format();
-		$format = $this->request->negotiate('media', $config->supportedResponseFormats, false);
+		$format = Services::format();
+		$mime   = "application/{$this->format}";
 
-		$this->response->setContentType($format);
+		// Determine correct response type through content negotiation if not explicitly declared
+		if (empty($this->format) || ! in_array($this->format, ['json', 'xml'], true))
+		{
+			$mime = $this->request->negotiate('media', $format->getConfig()->supportedResponseFormats, false);
+		}
+
+		$this->response->setContentType($mime);
 
 		// if we don't have a formatter, make one
 		if (! isset($this->formatter))
 		{
 			// if no formatter, use the default
-			$this->formatter = $config->getFormatter($format);
+			$this->formatter = $format->getFormatter($mime);
 		}
 
-		if ($format !== 'application/json')
+		if ($mime !== 'application/json')
 		{
 			// Recursively convert objects into associative arrays
 			// Conversion not required for JSONFormatter
@@ -387,4 +421,17 @@ trait ResponseTrait
 		return $this->formatter->format($data);
 	}
 
+	/**
+	 * Sets the format the response should be in.
+	 *
+	 * @param string $format
+	 *
+	 * @return $this
+	 */
+	public function setResponseFormat(string $format = null)
+	{
+		$this->format = strtolower($format);
+
+		return $this;
+	}
 }
